@@ -388,6 +388,8 @@
           pruefe(q('#weiter').disabled, 'Weiter ist schon vor dem Prüfen frei');
           pruefe(q('[data-pruefen]').disabled, 'Prüfen ohne Auswahl möglich');
           pruefe(q('[aria-current="step"]'), 'Stationsleiste ohne aria-current');
+          var bild = q('.akte__bild img');
+          pruefe(bild && bild.getAttribute('alt'), 'Bild in der Geschichte fehlt oder hat keinen Alt-Text');
           barrierefrei('Akte Station 1');
           pruefe(!gelesen('loesungen/'), 'Lösung vor dem Prüfen geladen');
           q('.option[data-wert="B"]').click();

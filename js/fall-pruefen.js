@@ -44,6 +44,13 @@ window.RA = window.RA || {};
     }
     ['titel', 'frage'].forEach(function (k) { if (!fall[k] || typeof fall[k] !== 'string') fehler('fall.' + k + ' fehlt.'); });
     if (!Array.isArray(fall.geschichte) || !fall.geschichte.length) fehler('fall.geschichte fehlt.');
+    var BILD = /^bilder\/akten\/[a-z0-9-]+\.webp$/;
+    if (fall.bild && !BILD.test(fall.bild)) fehler('fall.bild „' + fall.bild + '“ ungültig (bilder/akten/<name>.webp).');
+    (fall.geschichte || []).forEach(function (b, i) {
+      if (!b.bild) return;
+      if (!BILD.test(b.bild)) fehler('Geschichte, Block ' + (i + 1) + ': Bildpfad „' + b.bild + '“ ungültig.');
+      if (!b.alt) fehler('Geschichte, Block ' + (i + 1) + ': Bild ohne Alt-Text (Beschreibung für Screenreader).');
+    });
 
     var karten = {};
     (fall.karten || []).forEach(function (k, i) {

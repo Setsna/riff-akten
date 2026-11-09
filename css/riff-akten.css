@@ -83,7 +83,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=9) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=10) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -545,7 +545,9 @@ a.knopf { text-decoration: none; }
   box-shadow: 0 26px 50px -10px var(--glas-schatten);
 }
 .station__titel { margin: 0 0 .6em; font-family: var(--serif); font-weight: 400; font-size: max(24px, calc(44 * var(--s))); line-height: 1.1; }
-.akte__geschichte p + p { margin-top: .6em; }
+.akte__geschichte p + p, .akte__geschichte figure + p, .akte__geschichte p + figure { margin-top: .6em; }
+.akte__bild { margin: .8em 0; }
+.akte__bild img { display: block; width: 100%; height: auto; border-radius: 20px; }
 .akte__geschichte ul { margin: .6em 0 0; padding-left: 1.2em; }
 .akte__geschichte li + li { margin-top: .4em; }
 .akte__frage {

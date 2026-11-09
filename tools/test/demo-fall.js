@@ -27,6 +27,7 @@ window.DEMO_FALL = {
   id: 'demo',
   fall: {
     titel: 'Die verschwundene Muschel',
+    bild: 'bilder/akten/pausenbrot-titel.webp',
     nr: 1,
     klasse: 3,
     fach: 'Deutsch',
@@ -34,6 +35,7 @@ window.DEMO_FALL = {
     geschichte: [
       { absatz: 'Es ist Montag in der Riff-Schule.' },
       { absatz: 'Auf dem Lehrertisch lag eine rosa Muschel. Jetzt ist sie weg!' },
+      { bild: 'bilder/akten/pausenbrot-2.webp', alt: 'Ein Hering putzt die Fensterbank.' },
       { liste: ['**Spur 1:** Sand auf dem Boden', '**Spur 2:** ein nasser Fleck am Fenster'] }
     ],
     frage: 'Wo ist die rosa Muschel?',
