@@ -37,6 +37,17 @@ RA.config = {
   // Ab dann die sandfarbene Leiste "wartet auf Netz" zeigen
   wartenHinweisNachMs: 25000,
 
+  // Abzeichen für den Detektivausweis. Das Kind wählt eins davon.
+  // Die Kennung (id) wird gespeichert, höchstens 20 Zeichen.
+  abzeichen: [
+    { id: 'seepferdchen', name: 'Seepferdchen' },
+    { id: 'seestern', name: 'Seestern' },
+    { id: 'muschel', name: 'Muschel' },
+    { id: 'clownfisch', name: 'Clownfisch' },
+    { id: 'qualle', name: 'Qualle' },
+    { id: 'kugelfisch', name: 'Kugelfisch' }
+  ],
+
   // Lernzeit: ein einzelnes Stück zählt höchstens so lange (Sekunden).
   // Bleibt ein iPad offen liegen, läuft die Uhr sonst ewig weiter.
   lernzeitMaxStueck: 1800

@@ -167,7 +167,7 @@
 
   function grunddaten() {
     var d = {};
-    d['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila' };
+    d['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila', angelegt: Date.parse('2026-09-01T08:00:00') };
     return d;
   }
   function aufStart() {
@@ -213,6 +213,10 @@
         pruefe(z.erledigt.a === 50 && z.erledigt.b === 40, 'Erledigt: ' + JSON.stringify(z.erledigt));
         pruefe(z.eintraege.x.t === 'neu', 'Eintrag: ' + JSON.stringify(z.eintraege));
         pruefe(z.geaendert === 9, 'geaendert: ' + z.geaendert);
+        // Abzeichen: eigene Änderung gewinnt, sonst gilt die Datenbank
+        pruefe(m({ abzeichen: 'qualle' }, { abzeichen: 'seestern' }, { abzeichen: 'qualle' }).abzeichen === 'seestern', 'Abzeichen lokal geändert');
+        pruefe(m({ abzeichen: 'qualle' }, { abzeichen: 'qualle' }, { abzeichen: 'muschel' }).abzeichen === 'muschel', 'Abzeichen fern geändert');
+        pruefe(m(null, {}, null).abzeichen === '', 'Abzeichen leer ist nicht leerer Text');
         var leer = m(null, {}, null);
         pruefe(leer && leer.zeit && !Object.keys(leer.zeit).length, 'leerer Stand kaputt');
       });
@@ -239,7 +243,8 @@
       return warteAuf('Schreibvorgang', function () { return win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()]; })
         .then(function (d) {
           pruefe(typeof d.geaendert === 'number', 'geaendert fehlt');
-          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert'];
+          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'];
+          pruefe(d.abzeichen === undefined || typeof d.abzeichen === 'string', 'abzeichen ist kein Text');
           var fremd = Object.keys(d).filter(function (k) { return erlaubt.indexOf(k) < 0; });
           pruefe(!fremd.length, 'Felder, die die Regeln ablehnen würden: ' + fremd.join(', '));
           // Lernzeit dazuzählen und erneut speichern
@@ -250,6 +255,101 @@
           var d = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
           pruefe(d.zeit && d.zeit.probe === 42, 'Lernzeit nicht gespeichert: ' + JSON.stringify(d.zeit));
         });
+    }); })
+
+    .then(function () { return test('Detektivbuch: erreichbar, ein h1, kein Zugangscode sichtbar', function () {
+      q('a.fenster--buch').click();
+      return warteAuf('Detektivbuch', function () { return /Mein Detektivbuch/.test(text('h1')) && q('#abzeichen-waehlen'); })
+        .then(function () {
+          barrierefrei('Detektivbuch');
+          var t = doc().body.textContent;
+          pruefe(/Mila/.test(text('.ausweis__name')), 'Vorname fehlt auf dem Ausweis');
+          pruefe(!/TEST-?2345/i.test(t), 'Zugangscode steht auf der Seite');
+          pruefe(qa('main h2').length === 3, qa('main h2').length + ' statt 3 h2 (Ausweis, Stempel, Lernzeit)');
+        });
+    }); })
+
+    .then(function () { return test('Abzeichen: echter Dialog, Wahl wird gespeichert, Fokus zurück', function () {
+      var knopf = q('#abzeichen-waehlen');
+      knopf.click();
+      var d = q('#abzeichen-dialog');
+      pruefe(d.open, 'Dialog nicht offen');
+      pruefe(d.contains(doc().activeElement), 'Fokus nicht im Dialog');
+      pruefe(qa('.wahl__knopf').length === 6, qa('.wahl__knopf').length + ' statt 6 Abzeichen');
+      q('.wahl__knopf[data-id="seestern"]').click();
+      return warteAuf('Dialog zu, Fokus zurück', function () { return !d.open && doc().activeElement === knopf; })
+        .then(function () {
+          pruefe(win().RA.store.snapshot().abzeichen === 'seestern', 'Abzeichen nicht im Speicher');
+          pruefe(/Seestern/.test(q('.ausweis__abzeichen').getAttribute('alt') || ''), 'Ausweis zeigt das Abzeichen nicht');
+          return win().RA.cloud.schreiben();
+        })
+        .then(function () {
+          var f = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
+          pruefe(f.abzeichen === 'seestern', 'In der Datenbank: ' + f.abzeichen);
+        });
+    }); })
+
+    .then(function () { return test('Stempel und Lernzeit erscheinen mit Testdaten', function () {
+      var w = win();
+      var s = w.RA.store.snapshot();
+      s.stempel = { pausenbrot: Date.parse('2026-10-02T10:00:00'), schluessel: Date.parse('2026-10-20T10:00:00') };
+      s.zeit = { pausenbrot: 1260, schluessel: 2950 };
+      w.RA.store.abgleichUebernehmen(s);
+      w.RA.buch.zeigen();
+      pruefe(qa('.stempel__marke').length === 2, qa('.stempel__marke').length + ' statt 2 Stempel');
+      pruefe(/2\.10\.2026/.test(q('.stempel__marke').getAttribute('aria-label')), 'Stempel ohne Datum');
+      pruefe(/1 Stunde 10 Minuten/.test(text('.lernzeit__gesamt')), 'Gesamt: ' + text('.lernzeit__gesamt'));
+      pruefe(qa('.lernzeit__liste li').length === 2, 'Lernzeit je Akte fehlt');
+      barrierefrei('Detektivbuch mit Stempeln');
+    }); })
+
+    .then(function () { return test('Lernzeit-Uhr: Deckel 30 Minuten, Pause bei verdeckter Seite', function () {
+      var w = win(), echt = w.Date.now, jetzt = 1e12;
+      w.Date.now = function () { return jetzt; };
+      function verdeckt(ja) {
+        Object.defineProperty(doc(), 'hidden', { configurable: true, get: function () { return ja; } });
+        doc().dispatchEvent(new w.Event('visibilitychange'));
+      }
+      try {
+        var vorher = w.RA.store.snapshot().zeit.uhrtest || 0;
+        w.RA.uhr.start('uhrtest'); jetzt += 4000 * 1000; w.RA.uhr.stopp();
+        var a = w.RA.store.snapshot().zeit.uhrtest - vorher;
+        pruefe(a === w.RA.config.lernzeitMaxStueck, 'Deckel: ' + a + ' statt ' + w.RA.config.lernzeitMaxStueck);
+        w.RA.uhr.start('uhrtest'); jetzt += 90 * 1000;
+        verdeckt(true);
+        jetzt += 500 * 1000;
+        verdeckt(false);
+        jetzt += 10 * 1000; w.RA.uhr.stopp();
+        var b = w.RA.store.snapshot().zeit.uhrtest - vorher - a;
+        pruefe(b === 100, 'mit Pause: ' + b + ' statt 100 Sekunden');
+        pruefe(!w.RA.uhr.laeuft(), 'Uhr läuft nach stopp weiter');
+      } finally {
+        w.Date.now = echt;
+        delete doc().hidden;
+      }
+    }); })
+
+    .then(function () { return test('Ausweis als PDF: A4-Seite, gültige PDF-Datei', function () {
+      var w = win(), blob;
+      return w.RA.buch._ausweisSeite(w.RA.cloud.kind(), w.RA.store.snapshot()).then(function (c) {
+        pruefe(c.width === 1240 && c.height === 1754, 'Canvas ' + c.width + 'x' + c.height);
+        blob = w.RA.buch._pdfAusSeiten([c]);
+        pruefe(blob.size > 20000, 'PDF nur ' + blob.size + ' Byte');
+        return blob.slice(0, 8).text();
+      }).then(function (kopf) {
+        pruefe(/^%PDF-1\.4/.test(kopf), 'Kein PDF-Kopf: ' + kopf);
+        q('#ausweis-pdf').click();
+        return warteAuf('PDF-Link', function () { var z = q('#pdf-zeile'); return z && !z.hidden && q('#pdf-link').href; });
+      }).then(function () {
+        pruefe(/^blob:/.test(q('#pdf-link').href), 'Link ist kein blob');
+        pruefe(/Detektivausweis-Mila\.pdf/.test(q('#pdf-link').download), 'Dateiname: ' + q('#pdf-link').download);
+        return Math.round(blob.size / 1024) + ' KB';
+      });
+    }); })
+
+    .then(function () { return test('Detektivbuch: Zurück führt zur Startseite', function () {
+      q('a.zurueck').click();
+      return aufStart().then(function () { pruefe(/Hallo, Mila!/.test(text('h1')), 'h1 ist „' + text('h1') + '“'); });
     }); })
 
     .then(function () { return test('„Ich bin nicht Mila“ meldet ab', function () {

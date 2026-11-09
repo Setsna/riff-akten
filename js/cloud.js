@@ -172,7 +172,8 @@ window.RA = window.RA || {};
           });
         }
         var d = snap.data() || {};
-        kind = { code: code, vorname: d.vorname || 'Detektiv' };
+        kind = { code: code, vorname: d.vorname || 'Detektiv',
+                 angelegt: typeof d.angelegt === 'number' ? d.angelegt : null };
         RA.store.useProfile(id);
         bereit = true;
         RA.store.onChange(spaeterSchreiben);

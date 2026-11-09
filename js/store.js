@@ -20,7 +20,7 @@ window.RA = window.RA || {};
   var lauscher = [];
 
   function fresh() {
-    return { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: 0 };
+    return { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, abzeichen: '', geaendert: 0 };
   }
 
   function lesen(k) {
@@ -62,6 +62,13 @@ window.RA = window.RA || {};
     geaendert();
   }
 
+  // Abzeichen auf dem Detektivausweis (Kennung aus RA.config.abzeichen).
+  function abzeichenSetzen(id) {
+    if (typeof id !== 'string' || id.length > 20 || id === s.abzeichen) return;
+    s.abzeichen = id;
+    geaendert();
+  }
+
   RA.store = {
     useProfile: useProfile,
     snapshot: function () { return JSON.parse(JSON.stringify(s)); },
@@ -69,6 +76,7 @@ window.RA = window.RA || {};
     abgleichUebernehmen: abgleichUebernehmen,
     onChange: function (f) { if (lauscher.indexOf(f) < 0) lauscher.push(f); },
     zeitDazu: zeitDazu,
+    abzeichenSetzen: abzeichenSetzen,
     // Testhilfe für den Rauchtest
     _schluessel: function () { return KEY; }
   };

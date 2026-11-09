@@ -38,7 +38,7 @@
   try { szen = JSON.parse(localStorage.getItem(SPEICHER)); } catch (e) { szen = null; }
   if (!szen) {
     szen = { daten: {}, konten: {} };
-    szen.daten['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila' };
+    szen.daten['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila', angelegt: Date.parse('2026-09-01T08:00:00') };
   }
   window.VORSCHAU_SZENARIO = szen;
 

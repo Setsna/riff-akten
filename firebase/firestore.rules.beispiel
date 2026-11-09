@@ -61,15 +61,18 @@ service cloud.firestore {
     }
 
     // ---------- Fortschritt eines Kindes ----------
-    // Erledigte Akten, Stempel, Lernzeit. Kein Kind sieht den
+    // Erledigte Akten, Stempel, Lernzeit, gewähltes Abzeichen. Kein Kind sieht den
     // Fortschritt eines anderen.
     match /fortschritt/{code} {
       allow read:   if istLehrer() || istKind(code);
       allow write:  if istLehrer()
                     || (istKind(code) && freigeschaltet(code)
                         && request.resource.data.keys().hasOnly(
-                             ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert'])
-                        && request.resource.data.geaendert is int);
+                             ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'])
+                        && request.resource.data.geaendert is int
+                        && (!('abzeichen' in request.resource.data)
+                            || (request.resource.data.abzeichen is string
+                                && request.resource.data.abzeichen.size() <= 20)));
       allow delete: if istLehrer();
     }
 

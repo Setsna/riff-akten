@@ -83,7 +83,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=5) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=6) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -312,6 +312,165 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
 }
 .fenster__text { font-size: max(15px, calc(20 * var(--s))); line-height: 1.25; }
 
+/* ---------- Startseite: Fenster zum Detektivbuch ---------- */
+.fenster--buch {
+  display: flex; align-items: center; justify-content: center; gap: .6em;
+  width: max(260px, calc(380 * var(--s))); min-height: max(64px, calc(96 * var(--s)));
+  margin: calc(48 * var(--s)) auto 0;
+  border-radius: 999px;
+  background: var(--nebel);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  text-decoration: none; font-weight: 700;
+}
+.fenster--buch .fenster__text { font-size: max(18px, calc(27 * var(--s))); }
+.fenster__buch {
+  width: max(28px, calc(40 * var(--s))); height: auto;
+  fill: none; stroke: var(--weiss); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.fenster--buch:active { transform: scale(0.97); }
+
+/* ---------- Detektivbuch ---------- */
+.zurueck {
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: .4em;
+  min-height: 48px; padding: 0 1em;
+  margin: calc(-80 * var(--s)) calc(24 * var(--s)) calc(30 * var(--s));
+  font-size: max(15px, calc(21 * var(--s))); font-weight: 700;
+  color: var(--navy); text-decoration: none;
+  background: rgba(255, 255, 255, 0.72);
+  border: 2px solid var(--glas-kante); border-radius: 999px;
+}
+.zurueck svg { width: 1.2em; height: 1.2em; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.buch__teil {
+  width: min(100%, max(320px, calc(820 * var(--s))));
+  margin-top: calc(56 * var(--s));
+  display: flex; flex-direction: column; align-items: center;
+}
+.buch__titel {
+  position: relative; isolation: isolate;
+  margin: 0 0 calc(26 * var(--s));
+  font-family: var(--serif); font-weight: 400; font-size: max(26px, calc(50 * var(--s))); line-height: 1.05;
+  color: var(--navy);
+}
+.buch__titel::before {
+  content: ''; position: absolute; inset: -45% -25%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(228, 243, 245, 0.9), rgba(228, 243, 245, 0.55) 60%, transparent);
+}
+/* Text auf dunklem Glas: Weiß bei mindestens 0.62 Deckkraft (wie Eingang) */
+.buch__leer {
+  padding: .7em 1.2em; border-radius: calc(28 * var(--s));
+  background: linear-gradient(180deg, rgba(10, 52, 84, 0.66), rgba(10, 52, 84, 0.74));
+}
+.buch__knoepfe { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 20px; margin-top: calc(30 * var(--s)); }
+.buch__pdf { margin-top: calc(20 * var(--s)); }
+.knopf--leise { background: rgba(255, 255, 255, 0.8); box-shadow: 0 10px 22px -6px rgba(3, 20, 35, 0.4); }
+a.knopf { text-decoration: none; }
+
+/* Ausweis: helles Papier, Navy-Schrift (Kontrast > 10:1) */
+.ausweis {
+  width: min(100%, max(310px, calc(680 * var(--s))));
+  aspect-ratio: 85.6 / 54;
+  display: flex; flex-direction: column;
+  color: var(--navy); text-align: left;
+  border: 3px solid var(--navy); border-radius: calc(36 * var(--s));
+  background: linear-gradient(180deg, #e4f3f5, #fbf7ec);
+  box-shadow: 0 26px 50px -10px var(--glas-schatten);
+  overflow: hidden;
+}
+.ausweis__kopf {
+  padding: .45em 1.1em;
+  background: var(--navy); color: var(--weiss);
+  font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  font-size: max(14px, calc(22 * var(--s)));
+}
+.ausweis__mitte { flex: 1; display: flex; align-items: center; gap: calc(36 * var(--s)); padding: 0 calc(40 * var(--s)); }
+.ausweis__abzeichen {
+  flex: none;
+  width: max(96px, calc(190 * var(--s))); height: auto; aspect-ratio: 1;
+  border-radius: 50%; border: 3px solid var(--navy); background: var(--weiss);
+}
+.ausweis__abzeichen--leer {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: max(40px, calc(90 * var(--s))); color: #2d6f98;
+}
+.ausweis__daten { min-width: 0; }
+.ausweis__name {
+  font-family: var(--serif); font-size: max(28px, calc(64 * var(--s))); line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.ausweis__rolle { margin-top: .3em; font-size: max(15px, calc(22 * var(--s))); }
+.ausweis__seit { margin-top: .6em; font-size: max(15px, calc(22 * var(--s))); color: #23557a; }
+.ausweis__seit b { color: var(--navy); }
+.ausweis__tipp { padding: 0 1.4em .8em; font-size: max(14px, calc(20 * var(--s))); color: #23557a; }
+
+/* Stempel */
+.stempel {
+  list-style: none; margin: calc(26 * var(--s)) 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: calc(30 * var(--s));
+}
+.stempel__feld {
+  width: max(130px, calc(190 * var(--s)));
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: calc(18 * var(--s)); border-radius: calc(30 * var(--s));
+  background: rgba(251, 247, 236, 0.92); color: var(--navy);
+}
+.stempel__feld--leer {
+  aspect-ratio: 1; background: transparent;
+  border: 3px dashed rgba(255, 255, 255, 0.7);
+}
+.stempel__marke { width: 100%; height: auto; }
+.stempel__ring { fill: none; stroke: #2d6f98; stroke-width: 5; }
+.stempel__ring--innen { stroke-width: 2; }
+.stempel__wort { font-family: var(--sans); font-weight: 700; font-size: 20px; letter-spacing: 2px; fill: #2d6f98; text-anchor: middle; }
+.stempel__tag { font-family: var(--sans); font-size: 14px; fill: #2d6f98; text-anchor: middle; }
+.stempel__titel { font-weight: 700; font-size: max(14px, calc(20 * var(--s))); line-height: 1.2; text-align: center; }
+
+/* Lernzeit */
+.lernzeit__gesamt, .lernzeit__liste {
+  background: rgba(251, 247, 236, 0.92); color: var(--navy);
+  border-radius: calc(28 * var(--s));
+}
+.lernzeit__gesamt { padding: .7em 1.2em; }
+.lernzeit__liste {
+  list-style: none; margin: 14px 0 0; padding: .4em 1.2em;
+  width: min(100%, max(300px, calc(600 * var(--s))));
+}
+.lernzeit__liste li { display: flex; justify-content: space-between; gap: 1em; padding: .4em 0; text-align: left; }
+.lernzeit__liste li + li { border-top: 1px solid rgba(11, 49, 85, 0.2); }
+
+/* Dialog: Abzeichen wählen */
+.wahl {
+  width: min(92vw, 720px); max-height: 92svh;
+  padding: 24px 24px 28px;
+  border: 3px solid var(--navy); border-radius: 32px;
+  background: #fbf7ec; color: var(--navy);
+  text-align: center;
+}
+.wahl::backdrop { background: rgba(3, 20, 35, 0.6); }
+.wahl__titel { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 30px; }
+.wahl__text { margin-top: 8px; }
+.wahl__liste {
+  list-style: none; margin: 20px 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.wahl__knopf {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 6px; min-height: 48px;
+  font: inherit; font-weight: 700; color: var(--navy);
+  background: var(--weiss); border: 3px solid transparent; border-radius: 22px;
+  cursor: pointer;
+}
+.wahl__knopf img { width: min(110px, 22vw); height: auto; border-radius: 50%; }
+.wahl__knopf[aria-pressed="true"] { border-color: var(--navy); background: #e4f3f5; }
+.wahl__knopf:focus-visible, .wahl .knopf:focus-visible { outline-color: var(--navy); }
+.wahl .knopf--leise { background: var(--weiss); border: 2px solid var(--navy); }
+@media (max-width: 480px) { .wahl__liste { grid-template-columns: repeat(2, 1fr); } }
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .zurueck { margin-top: calc(20 * var(--s)); order: 3; align-self: center; }
+}
+
 /* ---------- Speicherleiste ---------- */
 .speicherleiste {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
@@ -343,6 +502,7 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
   }
   .klaro--start { margin-top: 0; width: calc(360 * var(--s)); }
   .akten { width: auto; margin-top: 0; }
+  .zurueck { margin-top: calc(-50 * var(--s)); }
 }
 
 /* ---------- Handy hoch ---------- */
@@ -359,4 +519,5 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
   .licht { animation: none; opacity: 0.8; }
   .blasen { display: none; }
   .knopf, .knopf__pfeil, .wer__knopf { transition: none; }
+  .fenster--buch:active, .knopf:active { transform: none; }
 }

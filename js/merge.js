@@ -15,6 +15,8 @@
                          (was einmal geschafft ist, bleibt geschafft)
      zeit                Zähler: FERN + (LOKAL − BASIS)
      eintraege           je Eintrag gewinnt der jüngere (Feld ts)
+     abzeichen           hat dieses Gerät es seit BASIS geändert,
+                         gilt LOKAL, sonst FERN
      geaendert           das Maximum
 
    Bewusst ohne Firebase, damit es sich ohne Netz testen lässt.
@@ -68,6 +70,13 @@ window.RA = window.RA || {};
     return raus;
   }
 
+  // Abzeichen: ein einzelner Wert. Die eigene Änderung gewinnt, sonst
+  // bleibt, was in der Datenbank steht. Nie undefined (Firestore).
+  function wahl(basis, lokal, fern) {
+    var t = function (x) { return typeof x === 'string' ? x : ''; };
+    return t(lokal) !== t(basis) ? t(lokal) : (t(fern) || t(lokal));
+  }
+
   function spielstand(basis, lokal, fern) {
     basis = obj(basis); lokal = obj(lokal); fern = obj(fern);
     return {
@@ -75,6 +84,7 @@ window.RA = window.RA || {};
       stempel: vereinigt(lokal.stempel, fern.stempel),
       zeit: zaehler(basis.zeit, lokal.zeit, fern.zeit),
       eintraege: juengere(lokal.eintraege, fern.eintraege),
+      abzeichen: wahl(basis.abzeichen, lokal.abzeichen, fern.abzeichen),
       geaendert: Math.max(zahl(lokal.geaendert), zahl(fern.geaendert))
     };
   }

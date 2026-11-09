@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=5" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=6" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).
@@ -108,7 +108,7 @@ window.RA = window.RA || {};
       fehlerEl.hidden = true;
       ansagen('Anmeldung läuft.');
       RA.cloud.anmelden(feld.value).then(function () {
-        startseite();
+        weg();
       }, function (text) {
         knopf.disabled = false;
         knopfText.textContent = 'Los geht’s';
@@ -160,11 +160,19 @@ window.RA = window.RA || {};
               '<p class="fenster__text">Die erste Akte –<br>taucht bald auf</p>' +
             '</li>' +
           '</ul>' +
+          '<a class="fenster fenster--buch" href="#buch">' +
+            '<svg class="fenster__buch" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+              '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"></path>' +
+              '<path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"></path><circle cx="12" cy="10" r="3"></circle>' +
+              '<path d="M14.2 12.2l2.3 2.3"></path></svg>' +
+            '<span class="fenster__text">Mein Detektivbuch</span>' +
+          '</a>' +
         '</section></div>' +
       '</main>'
     );
     document.getElementById('nicht-ich').addEventListener('click', function () {
       this.disabled = true;
+      if (RA.uhr) RA.uhr.stopp();
       RA.cloud.abmelden().then(function () { anmelden(); }, function () { anmelden(); });
     });
   }
@@ -200,13 +208,35 @@ window.RA = window.RA || {};
     document.body.classList.toggle('ruht', document.hidden);
   });
 
+  // ---------- Wege: #buch = Detektivbuch, sonst Startseite ----------
+  // Über den Hash, damit auch die Zurück-Geste des iPads funktioniert.
+  function weg() {
+    if (!RA.cloud.angemeldet()) return;
+    if (location.hash === '#buch' && RA.buch) RA.buch.zeigen();
+    else startseite();
+  }
+  window.addEventListener('hashchange', weg);
+  // Interne Links (#buch, #) nur den Hash setzen lassen. Sonst würde ein
+  // <base href> (lokale Vorschau) daraus einen Seitenwechsel machen.
+  appEl.addEventListener('click', function (ev) {
+    var a = ev.target.closest && ev.target.closest('a[href^="#"]');
+    if (!a) return;
+    ev.preventDefault();
+    var ziel = a.getAttribute('href').slice(1);
+    if (location.hash.slice(1) === ziel) weg();
+    else location.hash = ziel;
+  });
+
+  // Bausteine für andere Ansichten (js/buch.js)
+  RA.ui = { esc: esc, ansagen: ansagen, kopf: kopf, zeigen: zeigen, klaro: klaro };
+
   // ---------- Los ----------
   laden();
   RA.cloud.start(function (zustand) {
-    if (zustand === 'angemeldet') startseite();
+    if (zustand === 'angemeldet') weg();
     else if (zustand === 'offline') offline();
     else anmelden(RA.cloud.fehler());
   });
 
-  RA.app = { startseite: startseite, anmelden: anmelden };
+  RA.app = { startseite: startseite, anmelden: anmelden, weg: weg };
 })();
