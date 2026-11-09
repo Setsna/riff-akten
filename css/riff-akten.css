@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=12) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=13) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -283,8 +283,15 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
 .wer__knopf:active { transform: scale(0.97); }
 
 /* ---------- Akten ---------- */
-.buehne { width: 100%; display: flex; flex-direction: column; align-items: center; }
-.akten { width: 100%; margin-top: calc(36 * var(--s)); }
+.akten {
+  width: 100%;
+  display: grid; justify-items: center;
+  grid-template-areas: "klaro" "titel" "liste" "buch";
+}
+.akten > .klaro--start { grid-area: klaro; }
+.akten > .akten__titel { grid-area: titel; margin-top: calc(36 * var(--s)); }
+.akten > .akten__liste { grid-area: liste; }
+.akten > .fenster--buch { grid-area: buch; }
 .akten__titel {
   position: relative; isolation: isolate; display: inline-block;
   margin: 0;
@@ -696,12 +703,13 @@ a.knopf { text-decoration: none; }
 @media (orientation: landscape) and (min-width: 820px) {
   .kopf { padding-top: calc(64 * var(--s)); }
   .frage { font-size: calc(80 * var(--s)); }
-  .buehne {
-    flex-direction: row; align-items: center; justify-content: center;
-    gap: calc(80 * var(--s)); margin-top: calc(30 * var(--s));
+  .akten {
+    grid-template-areas: "titel titel" "klaro liste" "buch buch";
+    grid-template-columns: auto auto; justify-content: center; align-items: center;
+    column-gap: calc(80 * var(--s)); margin-top: calc(20 * var(--s));
   }
   .klaro--start { margin-top: 0; width: calc(360 * var(--s)); }
-  .akten { width: auto; margin-top: 0; }
+  .akten > .akten__titel { margin-top: 0; }
   .zurueck { margin-top: calc(-50 * var(--s)); }
 }
 

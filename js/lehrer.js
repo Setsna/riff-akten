@@ -178,6 +178,8 @@
         '</table></div>' +
       '</section>' +
 
+      auswertungHtml() +
+
       '<section class="lkarte" aria-labelledby="t-frei">' +
         '<h2 id="t-frei">Kinder freischalten</h2>' +
         '<p class="lhinweis">Lade die Datei <b>kinder.json</b>, die zusammen mit dem Aufkleberbogen entsteht ' +
@@ -232,6 +234,7 @@
       r.readAsText(f, 'utf-8');
     });
     el('akte-hochladen').addEventListener('click', aktenHochladen);
+    auswertungBinden();
     Array.prototype.forEach.call(document.querySelectorAll('[data-sperren]'), function (b) {
       b.addEventListener('click', function () { sperren(b.getAttribute('data-sperren'), b); });
     });
@@ -334,6 +337,131 @@
       ansagen('Akte „' + fall.titel + '“ ' + (vorhanden ? 'ersetzt.' : 'gespeichert.'));
     }, function (e) {
       erg.innerHTML = '<p class="lmeldung fehler">Speichern fehlgeschlagen: ' + esc(e.message) + '</p>';
+    });
+  }
+
+  // ==========================================================
+  // Auswertung (Etappe 4a)
+  // Zeigt nur, was ohnehin gespeichert wird: erreichte Station,
+  // gelöst, Lernzeit, Selbsteinschätzung bei Merkfragen und die
+  // Auswahl in "Mein Eintrag". Keine Einzelantworten.
+  // ==========================================================
+  var STUFEN = ['auch so', 'teilweise', 'anders'];
+  var gewaehlteAkte = null;
+
+  function minuten(sek) {
+    sek = Math.round(sek || 0);
+    if (!sek) return '–';
+    var m = Math.round(sek / 60);
+    return m < 1 ? 'unter 1 min' : (m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min');
+  }
+
+  function aufgabenVon(fall, typ) {
+    var raus = [];
+    (fall.stationen || []).forEach(function (s) {
+      (s.aufgaben || []).forEach(function (a) { if (a.typ === typ) raus.push(a); });
+    });
+    return raus;
+  }
+
+  function optionText(fall, a, wert) {
+    var o = (a.optionen || []).filter(function (x) { return (x.id || x.karte) === wert; })[0];
+    if (!o) return wert == null ? '–' : String(wert);
+    if (o.karte) {
+      var k = (fall.karten || []).filter(function (x) { return x.id === o.karte; })[0];
+      return k ? k.titel : o.karte;
+    }
+    return o.text;
+  }
+
+  function auswertungInhalt(fall) {
+    var n = (fall.stationen || []).length;
+    var merk = aufgabenVon(fall, 'merken');
+    var eintr = aufgabenVon(fall, 'eintrag');
+    var geloest = 0, begonnen = 0, zeitGeloest = [];
+    var zaehler = {};   // eintrag-id -> wert -> anzahl
+    eintr.forEach(function (a) { zaehler[a.id] = {}; });
+
+    var zeilen = kinder.map(function (k) {
+      var st = k.stand || {};
+      var e = (st.eintraege || {})[fall.id] || {};
+      var stempel = (st.stempel || {})[fall.id];
+      var zeit = (st.zeit || {})[fall.id] || 0;
+      var stand;
+      if (stempel) { geloest++; zeitGeloest.push(zeit); stand = 'gelöst am ' + new Date(stempel).toLocaleDateString('de-DE'); }
+      else if (e.station || zeit) { begonnen++; stand = 'Station ' + Math.min((e.station || 0) + 1, n) + ' von ' + n; }
+      else stand = 'noch nicht geöffnet';
+      eintr.forEach(function (a) {
+        var w = (e.eintrag || {})[a.id];
+        if (w != null) zaehler[a.id][w] = (zaehler[a.id][w] || 0) + 1;
+      });
+      return '<tr><th scope="row">' + esc(k.vorname) + '</th>' +
+        '<td>' + esc(stand) + '</td><td>' + esc(minuten(zeit)) + '</td>' +
+        merk.map(function (a) {
+          var s = (e.selbst || {})[a.id];
+          return '<td>' + (s == null ? '–' : esc(STUFEN[s] || s)) + '</td>';
+        }).join('') +
+        eintr.map(function (a) { return '<td>' + esc(optionText(fall, a, (e.eintrag || {})[a.id])) + '</td>'; }).join('') +
+      '</tr>';
+    }).join('');
+
+    var schnitt = zeitGeloest.length
+      ? minuten(zeitGeloest.reduce(function (s, x) { return s + x; }, 0) / zeitGeloest.length) : '–';
+    var zusammen = '<ul class="auswertung__zahlen">' +
+      '<li><b>' + geloest + '</b> von ' + kinder.length + ' Kindern haben die Akte gelöst</li>' +
+      '<li><b>' + begonnen + '</b> sind noch dabei</li>' +
+      '<li>Lernzeit bis zum Lösen im Schnitt: <b>' + esc(schnitt) + '</b></li>' +
+      eintr.map(function (a) {
+        var z = zaehler[a.id], teile = Object.keys(z).sort(function (x, y) { return z[y] - z[x]; })
+          .map(function (w) { return esc(optionText(fall, a, w)) + ': ' + z[w]; });
+        return '<li>' + esc(a.frage) + ' ' + (teile.length ? teile.join(' · ') : '–') + '</li>';
+      }).join('') +
+    '</ul>';
+
+    var kopf = '<tr><th scope="col">Vorname</th><th scope="col">Stand</th><th scope="col">Lernzeit</th>' +
+      merk.map(function (a, i) {
+        return '<th scope="col"><abbr title="' + esc(a.frage) + '">Merkfrage' + (merk.length > 1 ? ' ' + (i + 1) : '') + '</abbr></th>';
+      }).join('') +
+      eintr.map(function (a) { return '<th scope="col">' + esc(a.frage) + '</th>'; }).join('') + '</tr>';
+
+    return zusammen +
+      '<div class="tabelle-rahmen"><table class="tabelle">' +
+        '<caption class="unsichtbar">Auswertung „' + esc(fall.titel) + '“</caption>' +
+        '<thead>' + kopf + '</thead><tbody>' +
+        (zeilen || '<tr><td colspan="' + (3 + merk.length + eintr.length) + '">Noch keine Kinder.</td></tr>') +
+      '</tbody></table></div>' +
+      (merk.length ? '<p class="lhinweis">Merkfrage = Selbsteinschätzung des Kindes nach der Musterlösung ' +
+        '(„auch so“, „teilweise“, „anders“). Sie wird nicht geprüft.</p>' : '');
+  }
+
+  function auswertungHtml() {
+    if (!akten.length) {
+      return '<section class="lkarte" aria-labelledby="t-auswertung"><h2 id="t-auswertung">Auswertung</h2>' +
+        '<p>Noch keine Akten.</p></section>';
+    }
+    if (!gewaehlteAkte || !akten.some(function (a) { return a.id === gewaehlteAkte; })) gewaehlteAkte = akten[0].id;
+    var fall = akten.filter(function (a) { return a.id === gewaehlteAkte; })[0];
+    return '<section class="lkarte" aria-labelledby="t-auswertung">' +
+      '<h2 id="t-auswertung">Auswertung</h2>' +
+      (akten.length > 1
+        ? '<label for="auswertung-akte">Akte</label><select id="auswertung-akte">' +
+            akten.map(function (a) {
+              return '<option value="' + esc(a.id) + '"' + (a.id === gewaehlteAkte ? ' selected' : '') + '>' +
+                esc((a.nr ? a.nr + ' – ' : '') + a.titel) + '</option>';
+            }).join('') + '</select>'
+        : '<p class="lhinweis">Akte ' + esc(fall.nr || '') + ': <b>' + esc(fall.titel) + '</b></p>') +
+      '<div id="auswertung-inhalt">' + auswertungInhalt(fall) + '</div>' +
+    '</section>';
+  }
+
+  function auswertungBinden() {
+    var s = el('auswertung-akte');
+    if (!s) return;
+    s.addEventListener('change', function () {
+      gewaehlteAkte = s.value;
+      var fall = akten.filter(function (a) { return a.id === gewaehlteAkte; })[0];
+      el('auswertung-inhalt').innerHTML = auswertungInhalt(fall);
+      ansagen('Auswertung für „' + fall.titel + '“.');
     });
   }
 

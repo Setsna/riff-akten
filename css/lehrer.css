@@ -87,3 +87,9 @@
 .dialog :focus-visible { outline: 3px solid #d98e00; outline-offset: 3px; }
 
 .lehrerseite .fuss { font-size: 15px; }
+
+/* Auswertung (Etappe 4a) */
+.lehrer select { font: inherit; min-height: 44px; padding: 0 .6em; border: 2px solid #b9d3dc; border-radius: 10px; background: #fff; color: var(--navy); }
+.auswertung__zahlen { margin: 12px 0 16px; padding-left: 1.2em; }
+.auswertung__zahlen li + li { margin-top: 4px; }
+.tabelle abbr { text-decoration: underline dotted; cursor: help; }

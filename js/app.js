@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=12" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=13" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).
@@ -149,9 +149,11 @@ window.RA = window.RA || {};
         '<h1 class="frage">Hallo, ' + name + '!</h1>' +
         '<p class="hinweis">Ich bin ' + esc(C.maskottchen.name) + ', der Riff-Detektiv.<br>' +
           'Zusammen lösen wir knifflige Fälle.</p>' +
-        '<div class="buehne">' + klaro('klaro--start') +
+        // Raster: hochkant Klaro über den Akten, quer Klaro links daneben.
+        // Überschrift und Detektivbuch stehen dabei immer mittig.
         '<section class="akten" aria-labelledby="akten-titel">' +
           '<h2 id="akten-titel" class="akten__titel">Deine Akten</h2>' +
+          klaro('klaro--start') +
           '<ul class="akten__liste" id="akten-liste">' +
             '<li class="fenster fenster--bald">' +
               '<svg class="fenster__schloss" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
@@ -167,7 +169,7 @@ window.RA = window.RA || {};
               '<path d="M14.2 12.2l2.3 2.3"></path></svg>' +
             '<span class="fenster__text">Mein Detektivbuch</span>' +
           '</a>' +
-        '</section></div>' +
+        '</section>' +
       '</main>'
     );
     if (RA.akten) RA.akten.listeFuellen(document.getElementById('akten-liste'));

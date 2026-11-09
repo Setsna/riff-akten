@@ -698,6 +698,39 @@
         });
     }); })
 
+    .then(function () { return test('Auswertung: Stand, Lernzeit, Selbsteinschätzung und Eintrag je Kind', function () {
+      var d = grunddaten();
+      d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: 1 };
+      d['faelle/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
+      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+      d['fortschritt/' + CODE.toLowerCase()] = {
+        erledigt: { demo: Date.parse('2026-11-05T10:00:00') }, stempel: { demo: Date.parse('2026-11-05T10:00:00') },
+        zeit: { demo: 1260 }, geaendert: Date.now(),
+        eintraege: { demo: { station: 6, selbst: { '3.2': 0 }, eintrag: { '6.1': 'K2', '6.2': 'gut' }, ts: 1 } }
+      };
+      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: { demo: 300 }, geaendert: Date.now(),
+        eintraege: { demo: { station: 2, ts: 1 } } };
+      return lehrerLaden({ daten: d })
+        .then(googleKlick)
+        .then(function () { return warteAuf('Auswertung', function () { return q('#auswertung-inhalt'); }); })
+        .then(function (box) {
+          var t = box.textContent;
+          pruefe(/1 von 2 Kindern haben die Akte gelöst/.test(t), 'Zusammenfassung: ' + t.slice(0, 120));
+          pruefe(/1 sind noch dabei/.test(t), 'Noch dabei fehlt');
+          var zeilen = {};
+          Array.prototype.forEach.call(box.querySelectorAll('tbody tr'), function (tr) {
+            zeilen[tr.querySelector('th').textContent] = tr.textContent;
+          });
+          pruefe(/gelöst am 5\.11\.2026/.test(zeilen.Mila || ''), 'Mila: ' + zeilen.Mila);
+          pruefe(/21 min/.test(zeilen.Mila || ''), 'Lernzeit Mila: ' + zeilen.Mila);
+          pruefe(/auch so/.test(zeilen.Mila || ''), 'Selbsteinschätzung Mila: ' + zeilen.Mila);
+          pruefe(/Die Möwe erzählt/.test(zeilen.Mila || '') && /genau richtig/.test(zeilen.Mila || ''), 'Eintrag Mila: ' + zeilen.Mila);
+          pruefe(/Station 3 von 6/.test(zeilen.Ben || ''), 'Ben: ' + zeilen.Ben);
+          pruefe(/genau richtig: 1/.test(t), 'Zählung „Wie war der Fall“ fehlt');
+          barrierefrei('Lehrerbereich mit Auswertung');
+        });
+    }); })
+
     // ================= Rechtstexte =================
     .then(function () { return test('Datenschutz und Impressum: noindex, Version, ein h1, Links', function () {
       var v1 = (quelltext.match(/\?v=(\d+)/) || [])[1];
