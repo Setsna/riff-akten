@@ -92,6 +92,16 @@
     return { id: pfad.split('/')[1], exists: d !== undefined, data: function () { return kopie(d); } };
   }
 
+  // Wie Firestore: keine Liste direkt in einer Liste.
+  function formatPruefen(x, inListe) {
+    if (Array.isArray(x)) {
+      if (inListe) throw new Error('Function DocumentReference.set() called with invalid data. Nested arrays are not supported');
+      x.forEach(function (y) { formatPruefen(y, true); });
+    } else if (x && typeof x === 'object' && !(x instanceof INC)) {
+      Object.keys(x).forEach(function (k) { formatPruefen(x[k], false); });
+    }
+  }
+
   function schreiben(pfad, neu, opt) {
     var merge = !!(opt && opt.merge);
     var alt = merge ? (A.daten[pfad] || {}) : {};
@@ -109,7 +119,7 @@
       id: id, pfad: pfad,
       sammlung: sammlung,
       get: function () { return bald(function () { A.gelesen.push(pfad); return schnappschuss(pfad); }); },
-      set: function (d, opt) { return bald(function () { lehrerPruefen(sammlung, true); schreiben(pfad, d, opt); }); },
+      set: function (d, opt) { formatPruefen(d, false); return bald(function () { lehrerPruefen(sammlung, true); schreiben(pfad, d, opt); }); },
       delete: function () {
         return bald(function () {
           lehrerPruefen(sammlung, true);
@@ -151,7 +161,7 @@
     batch: function () {
       var schritte = [];
       return {
-        set: function (ref, d, opt) { schritte.push(function () { lehrerPruefen(ref.sammlung, true); schreiben(ref.pfad, d, opt); }); },
+        set: function (ref, d, opt) { formatPruefen(d, false); schritte.push(function () { lehrerPruefen(ref.sammlung, true); schreiben(ref.pfad, d, opt); }); },
         commit: function () { return bald(function () { schritte.forEach(function (s) { s(); }); }); }
       };
     },

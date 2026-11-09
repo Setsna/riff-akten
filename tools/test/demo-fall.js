@@ -20,6 +20,8 @@
      eintrag    Auswahl für das Detektivbuch, ohne richtig/falsch
    zusatz: true  = freiwillige Zusatzfrage für schnelle Kinder
    Text: **fett** ist erlaubt, sonst reiner Text.
+   Tabellen: zeilen: [{ zellen: [...] }, ...] – Firestore erlaubt keine
+   Listen direkt in Listen.
    ========================================================== */
 window.DEMO_FALL = {
   id: 'demo',
@@ -37,7 +39,7 @@ window.DEMO_FALL = {
     frage: 'Wo ist die rosa Muschel?',
     hilfe: 'Schau dir die Spuren genau an.\nWas passt zum Fenster?',
     karten: [
-      { id: 'K1', titel: 'Plan der Klasse', tabelle: { kopf: ['Platz', 'Was liegt dort?'], zeilen: [['Fenster', 'Blumentopf'], ['Tür', 'Jacken']] } },
+      { id: 'K1', titel: 'Plan der Klasse', tabelle: { kopf: ['Platz', 'Was liegt dort?'], zeilen: [{ zellen: ['Fenster', 'Blumentopf'] }, { zellen: ['Tür', 'Jacken'] }] } },
       { id: 'K2', titel: 'Die Möwe erzählt', text: 'Ich habe etwas Rosa im Blumentopf gesehen.', audio: 'audio/pausenbrot-lina.m4a' },
       { id: 'K3', titel: 'Das Wetter', text: 'Heute scheint die Sonne.' }
     ],

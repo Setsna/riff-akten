@@ -319,9 +319,16 @@
     var fall = Object.assign({ aktiv: true }, d.fall);
     var vorhanden = akten.some(function (a) { return a.id === d.id; });
     erg.innerHTML = '<p class="lmeldung">Wird gespeichert …</p>';
-    var batch = db.batch();
-    batch.set(db.collection('faelle').doc(d.id), fall);
-    batch.set(db.collection('loesungen').doc(d.id), d.loesung);
+    var batch;
+    try {
+      // Firestore prüft das Format schon hier und wirft sofort einen Fehler
+      batch = db.batch();
+      batch.set(db.collection('faelle').doc(d.id), fall);
+      batch.set(db.collection('loesungen').doc(d.id), d.loesung);
+    } catch (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Speichern nicht möglich: ' + esc(e.message) + '</p>';
+      return;
+    }
     batch.commit().then(function () {
       laden();
       ansagen('Akte „' + fall.titel + '“ ' + (vorhanden ? 'ersetzt.' : 'gespeichert.'));

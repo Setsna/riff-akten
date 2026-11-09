@@ -20,6 +20,21 @@ window.RA = window.RA || {};
     var f = [];
     function fehler(t) { if (f.length < 30) f.push(t); }
     if (!d || typeof d !== 'object') return ['Die Datei enthält kein Objekt.'];
+    // Firestore speichert keine Liste direkt in einer Liste ([[...]]).
+    var verschachtelt = null;
+    (function suche(x, pfad, inListe) {
+      if (verschachtelt) return;
+      if (Array.isArray(x)) {
+        if (inListe) { verschachtelt = pfad; return; }
+        x.forEach(function (y, i) { suche(y, pfad + '[' + i + ']', true); });
+      } else if (x && typeof x === 'object') {
+        Object.keys(x).forEach(function (k) { suche(x[k], pfad + '.' + k, false); });
+      }
+    })(d, 'datei', false);
+    if (verschachtelt) {
+      fehler('Bei ' + verschachtelt + ' steht eine Liste direkt in einer Liste. Das kann Firestore nicht ' +
+        'speichern. Tabellenzeilen so schreiben: { "zellen": [ ... ] }.');
+    }
     if (!/^[a-z0-9-]{2,30}$/.test(d.id || '')) fehler('„id“ fehlt oder ist ungültig (nur a–z, 0–9, Bindestrich).');
     var fall = d.fall, l = d.loesung;
     if (!fall || typeof fall !== 'object') return f.concat('„fall“ fehlt.');
@@ -37,6 +52,10 @@ window.RA = window.RA || {};
       karten[k.id] = k;
       if (!k.titel) fehler('Karte ' + k.id + ' hat keinen Titel.');
       if (!k.text && !k.tabelle) fehler('Karte ' + k.id + ' hat weder Text noch Tabelle.');
+      if (k.tabelle && (!Array.isArray(k.tabelle.kopf) || !Array.isArray(k.tabelle.zeilen) ||
+          k.tabelle.zeilen.some(function (z) { return !z || !Array.isArray(z.zellen); }))) {
+        fehler('Karte ' + k.id + ': Tabelle braucht „kopf“ und Zeilen der Form { "zellen": [ ... ] }.');
+      }
       if (k.audio && !/^audio\/[a-z0-9-]+\.(m4a|mp3)$/.test(k.audio)) fehler('Karte ' + k.id + ': Tonpfad „' + k.audio + '“ ungültig.');
       if (k.audio && !k.text) fehler('Hörkarte ' + k.id + ' braucht den Text zum Mitlesen.');
     });

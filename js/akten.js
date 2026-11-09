@@ -112,11 +112,11 @@ window.RA = window.RA || {};
         k.tabelle.kopf.map(function (z) { return '<th scope="col">' + txt(z) + '</th>'; }).join('') +
         '</tr></thead><tbody>' +
         k.tabelle.zeilen.map(function (r) {
-          return '<tr>' + r.map(function (z) { return '<td>' + txt(z) + '</td>'; }).join('') + '</tr>';
+          return '<tr>' + (r.zellen || []).map(function (z) { return '<td>' + txt(z) + '</td>'; }).join('') + '</tr>';
         }).join('') + '</tbody></table>';
     }
     if (k.audio) {
-      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=8"></audio>' +
+      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=9"></audio>' +
         (k.text ? '<details class="karte__mitlesen"><summary>Text zum Mitlesen</summary>' + absaetze(k.text) + '</details>' : '');
     } else if (k.text) {
       inhalt += absaetze(k.text);
