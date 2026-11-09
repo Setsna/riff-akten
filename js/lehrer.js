@@ -10,8 +10,8 @@
      liegen und ist wieder da, wenn derselbe Code neu freigeschaltet
      wird.
 
-   Auskunft, Löschen, Aufräumen, Auswertung und Sicherung kommen in
-   Etappe 4.
+   Etappe 4: Auswertung (4a); Auskunft als Datei, endgültig Löschen,
+   Aufräumen lange inaktiver Kinder, Kind einzeln anlegen (4b).
    ========================================================== */
 (function () {
   'use strict';
@@ -113,7 +113,7 @@
   // ---------- Laden ----------
   function laden() {
     zeigen('<h1>Lehrerbereich</h1><p>Daten werden geladen …</p>');
-    db.collection('kinder').get().then(function (snap) {
+    return db.collection('kinder').get().then(function (snap) {
       kinder = [];
       snap.forEach(function (d) { kinder.push(Object.assign({ id: d.id }, d.data())); });
       kinder.sort(function (a, b) { return String(a.vorname).localeCompare(String(b.vorname), 'de'); });
@@ -160,20 +160,28 @@
       return '<tr><th scope="row">' + esc(k.vorname) + '</th>' +
         '<td class="code">' + esc(fmtCode(k.id)) + '</td>' +
         '<td>' + esc(zuletzt(k)) + '</td>' +
-        '<td><button type="button" class="lknopf leise klein" data-sperren="' + esc(k.id) + '" ' +
-          'aria-label="Zugang von ' + esc(k.vorname) + ' sperren">Sperren</button></td></tr>';
+        '<td class="aktionen">' +
+          '<button type="button" class="lknopf leise klein" data-auskunft="' + esc(k.id) + '" ' +
+            'aria-label="Auskunft über ' + esc(k.vorname) + ' als Datei">Auskunft</button>' +
+          '<button type="button" class="lknopf leise klein" data-sperren="' + esc(k.id) + '" ' +
+            'aria-label="Zugang von ' + esc(k.vorname) + ' sperren">Sperren</button>' +
+          '<button type="button" class="lknopf leise klein gefahr" data-loeschen="' + esc(k.id) + '" ' +
+            'aria-label="' + esc(k.vorname) + ' endgültig löschen">Löschen</button>' +
+        '</td></tr>';
     }).join('');
 
     zeigen(kopf() +
       '<section class="lkarte" aria-labelledby="t-kinder">' +
         '<h2 id="t-kinder">Freigeschaltete Kinder (' + kinder.length + ')</h2>' +
-        '<p class="lhinweis"><b>Sperren</b> macht nur den Aufkleber unbrauchbar. Der Fortschritt bleibt ' +
-          'gespeichert und ist wieder da, wenn du denselben Code erneut freischaltest. ' +
-          'Endgültiges Löschen und Auskunft kommen später.</p>' +
+        '<p class="lhinweis"><b>Auskunft</b> lädt alles, was zu einem Kind gespeichert ist, als Datei herunter. ' +
+          '<b>Sperren</b> macht nur den Aufkleber unbrauchbar; der Fortschritt bleibt und ist wieder da, wenn du ' +
+          'denselben Code erneut freischaltest. <b>Löschen</b> entfernt Vorname, Code und Lernstand endgültig. ' +
+          'Das unsichtbare Anmeldekonto (Kennung = Code, ohne Namen) bleibt in Firebase und lässt sich bei Bedarf ' +
+          'in der Firebase-Konsole unter Authentication von Hand löschen.</p>' +
         '<div class="tabelle-rahmen"><table class="tabelle">' +
           '<caption class="unsichtbar">Freigeschaltete Kinder</caption>' +
           '<thead><tr><th scope="col">Vorname</th><th scope="col">Code</th><th scope="col">Zuletzt aktiv</th>' +
-          '<th scope="col"><span class="unsichtbar">Aktion</span></th></tr></thead>' +
+          '<th scope="col"><span class="unsichtbar">Aktionen</span></th></tr></thead>' +
           '<tbody>' + (zeilen || '<tr><td colspan="4">Noch keine Kinder freigeschaltet.</td></tr>') + '</tbody>' +
         '</table></div>' +
       '</section>' +
@@ -191,6 +199,26 @@
         '<textarea id="json" rows="5" spellcheck="false"></textarea>' +
         '<button type="button" class="lknopf" id="freischalten">Kinder freischalten</button>' +
         '<div id="ergebnis" aria-live="polite"></div>' +
+      '</section>' +
+
+      '<section class="lkarte" aria-labelledby="t-neu">' +
+        '<h2 id="t-neu">Ein Kind anlegen</h2>' +
+        '<p class="lhinweis">Für ein neues Kind im laufenden Schuljahr. Der Code wird zufällig erzeugt.</p>' +
+        '<label for="neu-vorname">Vorname</label>' +
+        '<input type="text" id="neu-vorname" maxlength="40" autocomplete="off">' +
+        '<button type="button" class="lknopf" id="neu-anlegen">Code erzeugen und freischalten</button>' +
+        '<div id="neu-ergebnis" aria-live="polite"></div>' +
+      '</section>' +
+
+      '<section class="lkarte" aria-labelledby="t-aufraeumen">' +
+        '<h2 id="t-aufraeumen">Aufräumen</h2>' +
+        '<p class="lhinweis">Laut Datenschutzerklärung werden Daten gelöscht, sobald sie nicht mehr gebraucht ' +
+          'werden. Hier findest du Kinder, die lange nicht aktiv waren. Gelöscht wird erst nach einer Rückfrage.</p>' +
+        '<label for="aufraeumen-monate">Nicht aktiv seit mindestens</label>' +
+        '<select id="aufraeumen-monate"><option value="6">6 Monaten</option>' +
+          '<option value="12" selected>12 Monaten</option><option value="24">24 Monaten</option></select> ' +
+        '<button type="button" class="lknopf leise" id="aufraeumen-suchen">Inaktive Kinder suchen</button>' +
+        '<div id="aufraeumen-ergebnis" aria-live="polite"></div>' +
       '</section>' +
 
       '<section class="lkarte" aria-labelledby="t-akten">' +
@@ -238,6 +266,15 @@
     Array.prototype.forEach.call(document.querySelectorAll('[data-sperren]'), function (b) {
       b.addEventListener('click', function () { sperren(b.getAttribute('data-sperren'), b); });
     });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-loeschen]'), function (b) {
+      b.addEventListener('click', function () { loeschen(b.getAttribute('data-loeschen'), b); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-auskunft]'), function (b) {
+      b.addEventListener('click', function () { auskunft(b.getAttribute('data-auskunft')); });
+    });
+    el('neu-anlegen').addEventListener('click', einzelnAnlegen);
+    el('neu-vorname').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') einzelnAnlegen(); });
+    el('aufraeumen-suchen').addEventListener('click', inaktiveSuchen);
   }
 
   // ---------- Freischalten ----------
@@ -465,6 +502,148 @@
     });
   }
 
+  // ==========================================================
+  // Datenschutz (Etappe 4b): Auskunft, Löschen, Aufräumen,
+  // Kind einzeln anlegen
+  // ==========================================================
+  var letzterDownload = null;   // für den Rauchtest
+
+  function heute() { return new Date().toISOString().slice(0, 10); }
+  function dateiname(s) { return String(s).replace(/[^\wäöüÄÖÜß-]+/g, '_'); }
+
+  function herunterladen(name, daten) {
+    var text = JSON.stringify(daten, null, 2);
+    letzterDownload = { name: name, daten: daten };
+    var url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  // Alles, was zu einem Kind gespeichert ist (Art. 15 und 20 DSGVO)
+  function auskunftDaten(k) {
+    var titel = {};
+    akten.forEach(function (a) { titel[a.id] = a.titel; });
+    return {
+      art: 'Auskunft über gespeicherte Daten (Art. 15 DSGVO), Riff-Akten',
+      erstellt: new Date().toISOString(),
+      verantwortlich: 'Ingo H., Lehrkraft, setsna@gmail.com',
+      hinweise: [
+        'Gespeichert sind nur Vorname, Zugangscode und Lernstand. Keine Nachnamen, Fotos, Adressen oder Antworttexte.',
+        'Für die Anmeldung gibt es bei Google Firebase ein Konto mit der Kennung ' +
+          String(k.id).toLowerCase() + '@' + C.firebase.authDomain + ' (nur der Code, kein Name).',
+        'Zeitangaben sind Millisekunden seit 1.1.1970 (UTC); Lernzeit in Sekunden.'
+      ],
+      kind: { vorname: k.vorname, code: fmtCode(k.id), freigeschaltet_am: k.angelegt ? new Date(k.angelegt).toISOString() : null },
+      akten_titel: titel,
+      lernstand: k.stand || null
+    };
+  }
+
+  function auskunft(id) {
+    var k = kinder.filter(function (x) { return x.id === id; })[0];
+    if (!k) return;
+    herunterladen('Auskunft-' + dateiname(k.vorname) + '-' + heute() + '.json', auskunftDaten(k));
+    ansagen('Auskunft für ' + k.vorname + ' wurde heruntergeladen.');
+  }
+
+  // Kind und Fortschritt löschen (ohne Rückfrage, die steht davor)
+  function kinderLoeschen(ids) {
+    return Promise.all(ids.map(function (id) {
+      return Promise.all([
+        db.collection('kinder').doc(id).delete(),
+        db.collection('fortschritt').doc(id).delete()
+      ]);
+    }));
+  }
+
+  var LOESCH_HINWEIS = ' Vorname, Code und Lernstand werden gelöscht und lassen sich nicht wiederherstellen ' +
+    '(außer aus einer Sicherung). Der Aufkleber funktioniert danach nicht mehr.';
+
+  function loeschen(id, knopf) {
+    var k = kinder.filter(function (x) { return x.id === id; })[0];
+    if (!k) return;
+    frage('Endgültig löschen?', k.vorname + ' (' + fmtCode(id) + ') endgültig löschen?' + LOESCH_HINWEIS,
+      'Endgültig löschen', knopf).then(function (ja) {
+      if (!ja) return;
+      kinderLoeschen([id]).then(function () {
+        laden();
+        ansagen(k.vorname + ' wurde endgültig gelöscht.');
+      }, function (e) { frage('Löschen fehlgeschlagen', e.message || String(e), 'OK'); });
+    });
+  }
+
+  // ---------- Aufräumen: lange inaktive Kinder ----------
+  function zuletztAktiv(k) { return (k.stand && k.stand.geaendert) || k.angelegt || 0; }
+
+  function inaktiveSuchen() {
+    var monate = Number(el('aufraeumen-monate').value) || 12;
+    var grenze = Date.now() - monate * 30.44 * 86400000;
+    var treffer = kinder.filter(function (k) { return zuletztAktiv(k) < grenze; });
+    var erg = el('aufraeumen-ergebnis');
+    if (!treffer.length) {
+      erg.innerHTML = '<p class="lmeldung">Kein Kind war länger als ' + monate + ' Monate inaktiv.</p>';
+      ansagen('Keine inaktiven Kinder.');
+      return;
+    }
+    erg.innerHTML = '<p>' + treffer.length + (treffer.length === 1 ? ' Kind war' : ' Kinder waren') +
+      ' länger als ' + monate + ' Monate nicht aktiv:</p><ul>' +
+      treffer.map(function (k) { return '<li>' + esc(k.vorname) + ' (' + esc(fmtCode(k.id)) + ') – ' + esc(zuletzt(k)) + '</li>'; }).join('') +
+      '</ul><button type="button" class="lknopf" id="aufraeumen-loeschen">Diese ' + treffer.length +
+      (treffer.length === 1 ? ' Kind' : ' Kinder') + ' endgültig löschen</button>';
+    ansagen(treffer.length + ' inaktive Kinder gefunden.');
+    var b = el('aufraeumen-loeschen');
+    b.addEventListener('click', function () {
+      frage('Endgültig löschen?', treffer.length + (treffer.length === 1 ? ' Kind' : ' Kinder') +
+        ' endgültig löschen: ' + treffer.map(function (k) { return k.vorname; }).join(', ') + '.' + LOESCH_HINWEIS,
+        'Endgültig löschen', b).then(function (ja) {
+        if (!ja) return;
+        kinderLoeschen(treffer.map(function (k) { return k.id; })).then(function () {
+          laden();
+          ansagen(treffer.length + ' Kinder wurden gelöscht.');
+        }, function (e) { frage('Löschen fehlgeschlagen', e.message || String(e), 'OK'); });
+      });
+    });
+  }
+
+  // ---------- Ein Kind einzeln anlegen ----------
+  function neuerCode() {
+    var A = C.code.alphabet, z = new Uint32Array(C.code.laenge), c;
+    do {
+      crypto.getRandomValues(z);
+      c = Array.prototype.map.call(z, function (n) { return A[n % A.length]; }).join('');
+    } while (kinder.some(function (k) { return k.id === c.toLowerCase(); }));
+    return c;
+  }
+
+  function einzelnAnlegen() {
+    var name = el('neu-vorname').value.trim();
+    var erg = el('neu-ergebnis');
+    if (!name || name.length > 40) {
+      erg.innerHTML = '<p class="lmeldung fehler">Bitte einen Vornamen eingeben (höchstens 40 Zeichen).</p>';
+      el('neu-vorname').focus();
+      return;
+    }
+    var code = neuerCode();
+    var link = location.href.replace(/lehrer\.html.*$/, '') + '#c=' + code;
+    db.collection('kinder').doc(code.toLowerCase()).set({ vorname: name, angelegt: Date.now() }).then(function () {
+      // laden() zeichnet alles neu; das Ergebnis danach wieder einblenden
+      return laden().then(function () {
+        var e2 = el('neu-ergebnis');
+        if (!e2) return;
+        e2.innerHTML = '<div class="lmeldung"><p><b>' + esc(name) + '</b> ist freigeschaltet.</p>' +
+          '<p>Code: <b class="code">' + esc(fmtCode(code)) + '</b></p>' +
+          '<p>Link: <code>' + esc(link) + '</code></p>' +
+          '<p>Einen QR-Aufkleber erzeugst du mit <code>tools/qr_aufkleber.py</code>. ' +
+          'Bis dahin kann das Kind den Code auch eintippen.</p></div>';
+        ansagen(name + ' ist freigeschaltet. Code ' + fmtCode(code) + '.');
+      });
+    }, function (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Speichern fehlgeschlagen: ' + esc(e.message) + '</p>';
+    });
+  }
+
   // Testhilfe für den Rauchtest
-  window.RA.lehrer = { frage: frage };
+  window.RA.lehrer = { frage: frage, letzterDownload: function () { return letzterDownload; } };
 })();

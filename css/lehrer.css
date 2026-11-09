@@ -93,3 +93,12 @@
 .auswertung__zahlen { margin: 12px 0 16px; padding-left: 1.2em; }
 .auswertung__zahlen li + li { margin-top: 4px; }
 .tabelle abbr { text-decoration: underline dotted; cursor: help; }
+
+/* Datenschutz (Etappe 4b) */
+.aktionen { white-space: nowrap; }
+.aktionen .lknopf + .lknopf { margin-left: 6px; }
+.lknopf.leise.gefahr { color: var(--fehler); }
+.lehrer input[type=text] {
+  font: inherit; min-height: 44px; width: min(100%, 320px); padding: 0 .6em;
+  border: 2px solid #b9d3dc; border-radius: 10px; color: var(--navy); background: #fff; margin-right: 8px;
+}

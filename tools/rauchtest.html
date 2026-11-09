@@ -731,6 +731,92 @@
         });
     }); })
 
+    .then(function () { return test('Datenschutz: Auskunft als Datei, endgültig Löschen mit Rückfrage', function () {
+      var d = grunddaten();
+      d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: Date.now() };
+      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: { demo: 60 }, eintraege: {}, abzeichen: 'qualle', geaendert: Date.now() };
+      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() };
+      return lehrerLaden({ daten: d })
+        .then(googleKlick)
+        .then(function () { return warteAuf('Knöpfe', function () { return q('[data-auskunft="test2345"]'); }); })
+        .then(function (b) {
+          win().HTMLAnchorElement.prototype.click = function () {};   // keine echte Datei im Test
+          b.click();
+          var dl = win().RA.lehrer.letzterDownload();
+          pruefe(dl && /^Auskunft-Mila-\d{4}-\d\d-\d\d\.json$/.test(dl.name), 'Dateiname: ' + (dl && dl.name));
+          pruefe(dl.daten.kind.code === 'TEST-2345' && dl.daten.kind.vorname === 'Mila', 'Kind fehlt in der Auskunft');
+          pruefe(dl.daten.lernstand && dl.daten.lernstand.abzeichen === 'qualle', 'Lernstand fehlt in der Auskunft');
+          pruefe(/test2345@/.test(dl.daten.hinweise.join(' ')), 'Hinweis auf das Anmeldekonto fehlt');
+          var lk = q('[data-loeschen="abcd2345"]');
+          lk.click();
+          pruefe(q('#dialog').open && /Ben/.test(text('#dialog-text')), 'Rückfrage fehlt oder ohne Namen');
+          q('#dialog-nein').click();
+          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'], 'Abbrechen hat trotzdem gelöscht');
+          q('[data-loeschen="abcd2345"]').click();
+          q('#dialog-ja').click();
+          return warteAuf('Ben gelöscht', function () {
+            var D = win().ATTRAPPE.daten;
+            return !D['kinder/abcd2345'] && !D['fortschritt/abcd2345'];
+          });
+        })
+        .then(function () {
+          pruefe(win().ATTRAPPE.daten['kinder/' + CODE.toLowerCase()], 'Mila wurde mitgelöscht');
+          return warteAuf('Liste ohne Ben', function () {
+            var tb = q('section[aria-labelledby="t-kinder"] tbody');
+            return tb && !/Ben/.test(tb.textContent);
+          });
+        });
+    }); })
+
+    .then(function () { return test('Ein Kind anlegen: zufälliger gültiger Code, Link angezeigt', function () {
+      q('#neu-vorname').value = '';
+      q('#neu-anlegen').click();
+      pruefe(/Vornamen/.test(text('#neu-ergebnis')), 'Leerer Vorname nicht abgefangen');
+      q('#neu-vorname').value = 'Ella';
+      q('#neu-anlegen').click();
+      return warteAuf('Ergebnis', function () { return /ist freigeschaltet/.test(text('#neu-ergebnis')) && text('#neu-ergebnis'); })
+        .then(function (t) {
+          var m = /Code: ([A-Z0-9]{4})-([A-Z0-9]{4})/.exec(t);
+          pruefe(m, 'Kein Code im Ergebnis: ' + t);
+          var code = (m[1] + m[2]);
+          var A = win().RA.config.code.alphabet;
+          pruefe(code.split('').every(function (c) { return A.indexOf(c) >= 0; }), 'Code mit ungültigem Zeichen: ' + code);
+          var doc = win().ATTRAPPE.daten['kinder/' + code.toLowerCase()];
+          pruefe(doc && doc.vorname === 'Ella' && doc.angelegt > 0, 'Ella nicht gespeichert');
+          pruefe(new RegExp('#c=' + code).test(t), 'Link fehlt');
+          pruefe(/Ella/.test(text('section[aria-labelledby="t-kinder"] tbody')), 'Ella nicht in der Liste');
+        });
+    }); })
+
+    .then(function () { return test('Aufräumen: findet nur lange inaktive Kinder, löscht nach Rückfrage', function () {
+      var d = grunddaten();
+      var alt = Date.now() - 400 * 86400000;
+      d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: alt };
+      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: alt };
+      d['kinder/efgh2345'] = { vorname: 'Pia', angelegt: alt };   // nie angemeldet
+      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() };
+      return lehrerLaden({ daten: d })
+        .then(googleKlick)
+        .then(function () { return warteAuf('Aufräumen', function () { return q('#aufraeumen-suchen'); }); })
+        .then(function (b) {
+          b.click();
+          var t = text('#aufraeumen-ergebnis');
+          pruefe(/2 Kinder/.test(t) && /Ben/.test(t) && /Pia/.test(t), 'Treffer: ' + t);
+          pruefe(!/Mila/.test(t), 'Aktive Mila steht in der Liste');
+          q('#aufraeumen-loeschen').click();
+          pruefe(q('#dialog').open, 'Keine Rückfrage');
+          q('#dialog-ja').click();
+          return warteAuf('gelöscht', function () {
+            var D = win().ATTRAPPE.daten;
+            return !D['kinder/abcd2345'] && !D['kinder/efgh2345'] && !D['fortschritt/abcd2345'];
+          });
+        })
+        .then(function () {
+          pruefe(win().ATTRAPPE.daten['kinder/' + CODE.toLowerCase()], 'Mila wurde mitgelöscht');
+          barrierefrei('Lehrerbereich mit Datenschutz-Abschnitten');
+        });
+    }); })
+
     // ================= Rechtstexte =================
     .then(function () { return test('Datenschutz und Impressum: noindex, Version, ein h1, Links', function () {
       var v1 = (quelltext.match(/\?v=(\d+)/) || [])[1];
