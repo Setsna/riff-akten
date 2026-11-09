@@ -1,0 +1,88 @@
+rules_version = '2';
+// ============================================================
+//  Riff-Akten – Zugriffsregeln für Firestore
+//  Projekt: riff-akten
+//
+//  BEISPIEL: Vor dem Einfügen in die Firebase-Konsole
+//  DEINE-EMAIL@example.com durch die echte Adresse ersetzen.
+//  Die echte Fassung heißt firebase/firestore.rules und kommt
+//  NIE ins Repository (.gitignore).
+//
+//  Grundsatz: Alles ist verboten, außer es steht hier ausdrücklich.
+//  Ein Kind kommt nur an seinen eigenen Fortschritt. Die Lehrkraft
+//  kommt an alles. Niemand kann die Kinderliste durchblättern.
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Wer ist wer? ----------
+    // Lehrkraft: meldet sich mit diesem Google-Konto an.
+    function istLehrer() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+             'DEINE-EMAIL@example.com'
+           ];
+    }
+
+    // Kind: meldet sich unsichtbar mit <code>@riff-akten.firebaseapp.com an
+    // (js/cloud.js: mailVon). Der Code steht klein geschrieben vorne.
+    function istKind(code) {
+      return request.auth != null
+        && request.auth.token.email == code + '@riff-akten.firebaseapp.com';
+    }
+
+    // Nur Codes, die du angelegt hast, zählen als freigeschaltet.
+    function freigeschaltet(code) {
+      return exists(/databases/$(database)/documents/kinder/$(code));
+    }
+
+    function mailCode() {
+      return request.auth.token.email.split('@')[0];
+    }
+
+    // WICHTIG: "request.auth != null" allein ist KEINE Schranke. Jeder
+    // kann sich mit dem öffentlichen API-Schlüssel selbst ein Konto
+    // anlegen. Erst der Blick in "kinder" macht daraus eine Prüfung.
+    function istKlassenmitglied() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('^[a-z0-9]+@riff-akten[.]firebaseapp[.]com$')
+        && freigeschaltet(mailCode());
+    }
+
+    // ---------- Kinderliste: Vorname und Code ----------
+    // get  = ein Kind gezielt nachschlagen (das Kind sich selbst)
+    // list = die ganze Liste durchblättern (nur Lehrkraft)
+    match /kinder/{code} {
+      allow get:   if istLehrer() || istKind(code);
+      allow list:  if istLehrer();
+      allow write: if istLehrer();
+    }
+
+    // ---------- Fortschritt eines Kindes ----------
+    // Erledigte Akten, Stempel, Lernzeit. Kein Kind sieht den
+    // Fortschritt eines anderen.
+    match /fortschritt/{code} {
+      allow read:   if istLehrer() || istKind(code);
+      allow write:  if istLehrer()
+                    || (istKind(code) && freigeschaltet(code)
+                        && request.resource.data.keys().hasOnly(
+                             ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert'])
+                        && request.resource.data.geaendert is int);
+      allow delete: if istLehrer();
+    }
+
+    // ---------- Einstellungen der Klasse ----------
+    match /einstellungen/{id} {
+      allow read:  if istLehrer() || istKlassenmitglied();
+      allow write: if istLehrer();
+    }
+
+    // ---------- Alles Übrige ist gesperrt ----------
+    // Akten ("faelle") und Lösungen ("loesungen") kommen in Etappe 3 dazu.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

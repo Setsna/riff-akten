@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Riff-Akten – Rauchtest</title>
+<!--
+  Rauchtest für die Kinder-App (index.html), Aufbau wie bei Perlentaucher.
+
+  Starten:   powershell -ExecutionPolicy Bypass -File tools\server.ps1
+  Öffnen:    http://localhost:8123/tools/rauchtest.html
+
+  Die App läuft mit der Firebase-Attrappe (tools/test/firebase-attrappe.js).
+  Nichts geht an die echte Datenbank. Geprüft wird das echte index.html
+  mit allen echten Skripten; nur die drei Firebase-Skripte werden ersetzt.
+
+  Ergebnis: Liste auf der Seite, Seitentitel beginnt mit OK oder FEHLER,
+  window.RAUCHTEST hält { fertig, ok, fehler, liste }.
+-->
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 16px; background: #F4F9FB; color: #13323B; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  #stand { font-weight: 700; margin: 8px 0 12px; }
+  #stand.ok { color: #1F7A3A; } #stand.fehler { color: #B3261E; }
+  ol { padding-left: 22px; } li { margin: 3px 0; }
+  li.fehler { color: #B3261E; }
+  li small { color: #5A7680; display: block; }
+  iframe { width: 390px; height: 700px; border: 1px solid #B9D3DC; border-radius: 8px; background: #fff; }
+  .raster { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .raster > div { flex: 1 1 320px; min-width: 0; }
+</style>
+</head>
+<body>
+<h1>Riff-Akten – Rauchtest</h1>
+<div id="stand">läuft …</div>
+<div class="raster">
+  <div><ol id="liste"></ol></div>
+  <iframe id="app" title="App im Test"></iframe>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var CODE = 'TEST2345';
+  var MAIL = CODE.toLowerCase() + '@riff-akten.firebaseapp.com';
+  var FREMD = 'ZZZZ9999';                       // gültiges Format, nicht freigeschaltet
+  var rahmen = document.getElementById('app');
+  var ergebnis = window.RAUCHTEST = { fertig: false, ok: 0, fehler: 0, liste: [] };
+  var quelltext = null;
+
+  // ---------- Hilfen ----------
+  function warteAuf(beschreibung, f, ms) {
+    var bis = Date.now() + (ms || 8000);
+    return new Promise(function (ok, nein) {
+      (function versuch() {
+        var x; try { x = f(); } catch (e) { x = null; }
+        if (x) return ok(x);
+        if (Date.now() > bis) return nein(new Error('Zeit abgelaufen: ' + beschreibung));
+        setTimeout(versuch, 40);
+      })();
+    });
+  }
+  function win() { return rahmen.contentWindow; }
+  function doc() { return rahmen.contentDocument; }
+  function q(sel) { return doc().querySelector(sel); }
+  function qa(sel) { return Array.prototype.slice.call(doc().querySelectorAll(sel)); }
+  function pruefe(bed, text) { if (!bed) throw new Error(text); }
+  function text(sel) { var el = q(sel); return el ? el.textContent.trim() : ''; }
+
+  function eintragen(name, ok, info) {
+    var li = document.createElement('li');
+    li.className = ok ? 'ok' : 'fehler';
+    li.textContent = (ok ? 'OK  ' : 'FEHLER  ') + name;
+    if (info) { var s = document.createElement('small'); s.textContent = info; li.appendChild(s); }
+    document.getElementById('liste').appendChild(li);
+    ergebnis.liste.push({ name: name, ok: ok, info: info || '' });
+    if (ok) ergebnis.ok++; else ergebnis.fehler++;
+  }
+
+  function test(name, f) {
+    return Promise.resolve().then(f).then(function (info) {
+      var fe = (win() && win().FEHLER) || [];
+      if (fe.length) throw new Error('Skriptfehler in der App: ' + fe.join(' | '));
+      eintragen(name, true, info);
+    }, function (e) {
+      eintragen(name, false, e && e.message ? e.message : String(e));
+    });
+  }
+
+  // Barrierefreiheit der gerade sichtbaren Ansicht (Grundregeln aus CLAUDE.md)
+  function barrierefrei(ansicht) {
+    var h1 = qa('h1');
+    pruefe(h1.length === 1, ansicht + ': ' + h1.length + ' statt 1 h1');
+    // Überschriften ohne Sprünge
+    var stufe = 0;
+    qa('h1,h2,h3,h4').forEach(function (h) {
+      var n = +h.tagName[1];
+      pruefe(n <= stufe + 1, ansicht + ': Überschrift springt auf ' + h.tagName);
+      stufe = n;
+    });
+    // Eingabefelder mit label oder aria-label
+    qa('input,select,textarea').forEach(function (el) {
+      var hat = el.getAttribute('aria-label') || (el.id && q('label[for="' + el.id + '"]'));
+      pruefe(hat, ansicht + ': Eingabefeld ohne Beschriftung');
+    });
+    // Nichts Klickbares außer button/a
+    qa('[onclick],[data-action]').forEach(function (el) {
+      pruefe(/^(BUTTON|A)$/.test(el.tagName), ansicht + ': klickbares ' + el.tagName);
+    });
+    // Knöpfe mit Text oder aria-label
+    qa('button').forEach(function (b) {
+      pruefe(b.textContent.trim() || b.getAttribute('aria-label'), ansicht + ': Knopf ohne Namen');
+    });
+    pruefe(q('[aria-live]'), ansicht + ': kein aria-live-Bereich');
+    pruefe(qa('a[href="datenschutz.html"]').length && qa('a[href="impressum.html"]').length,
+      ansicht + ': Links zu Datenschutz/Impressum fehlen');
+  }
+
+  // ---------- App laden ----------
+  // opt.seite: 'index' (Kinder-App, Vorgabe) oder 'lehrer'
+  function appLaden(opt) {
+    opt = opt || {};
+    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    window.SZENARIO = { daten: opt.daten || {}, konten: opt.konten || {},
+                        lehrer: opt.lehrer, googleKonto: opt.googleKonto };
+
+    var lehrer = opt.seite === 'lehrer';
+    var html = lehrer ? lehrerText : quelltext;
+    var fb = /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"><\/script>\s*/g;
+    var treffer = html.match(fb) || [];
+    if (treffer.length !== 3) {
+      return Promise.reject(new Error('index.html bindet ' + treffer.length + ' statt 3 Firebase-Skripte ein.'));
+    }
+    var ersatz = opt.modus === 'offline' ? '' :
+      '<script>window.ATTRAPPE = parent.SZENARIO;<\/script>' +
+      '<script src="tools/test/firebase-attrappe.js"><\/script>\n';
+    var n = 0;
+    html = html.replace(fb, function () { return n++ === 0 ? ersatz : ''; });
+    html = html.replace(/<head>/i, '<head><base href="/">' +
+      '<script>window.FEHLER = [];' +
+      'addEventListener("error", function (e) { FEHLER.push(e.message + " (" + (e.filename || "") + ":" + e.lineno + ")"); });' +
+      'addEventListener("unhandledrejection", function (e) { FEHLER.push("Promise: " + (e.reason && e.reason.message || e.reason)); });' +
+      '<\/script>');
+
+    window.RAUCHTEST_HTML = html;
+    var alt = doc();
+    rahmen.src = '/tools/test/leer.html?t=' + Date.now() + (opt.hash || '');
+    return warteAuf('App geladen', function () {
+      var w = win();
+      return doc() !== alt && w.RA && (lehrer ? w.RA.lehrer : w.RA.app);
+    });
+  }
+
+  var lehrerText = null;
+  var LEHRKRAFT = 'lehrkraft@example.com';
+  function lehrerLaden(extra) {
+    var d = grunddaten();
+    d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() - 2 * 86400000 };
+    return appLaden(Object.assign({ seite: 'lehrer', daten: d, lehrer: [LEHRKRAFT], googleKonto: LEHRKRAFT }, extra || {}));
+  }
+  function googleKlick() {
+    return warteAuf('Google-Knopf', function () { return q('#google'); }).then(function (k) { k.click(); });
+  }
+  function aufLehrerListe() {
+    return warteAuf('Kinderliste', function () { return q('#freischalten'); });
+  }
+
+  function grunddaten() {
+    var d = {};
+    d['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila' };
+    return d;
+  }
+  function aufStart() {
+    return warteAuf('Startseite', function () { return q('#nicht-ich'); });
+  }
+  function aufAnmeldung() {
+    return warteAuf('Anmeldebildschirm', function () { return q('#anmeldung'); });
+  }
+  function codeEintippen(code) {
+    q('#code').value = code;
+    q('#anmeldung button[type="submit"]').click();
+  }
+  function fehlertext() {
+    return warteAuf('Fehlermeldung', function () {
+      var el = q('#code-fehler');
+      return el && !el.hidden && el.textContent.trim();
+    });
+  }
+
+  // ---------- Tests ----------
+  fetch('/index.html?t=' + Date.now()).then(function (r) { return r.text(); })
+    .then(function (t) { quelltext = t; })
+
+    .then(function () { return test('index.html: noindex und Versionsnummern', function () {
+      pruefe(/<meta name="robots" content="noindex, nofollow">/.test(quelltext), 'robots-noindex fehlt');
+      var lokal = quelltext.match(/(?:src|href)="(?:js|css)\/[^"]+"/g) || [];
+      var ohne = lokal.filter(function (s) { return !/\?v=\d+"$/.test(s); });
+      pruefe(!ohne.length, 'ohne ?v=N: ' + ohne.join(', '));
+      var v = {}; lokal.forEach(function (s) { v[s.match(/\?v=(\d+)/)[1]] = 1; });
+      pruefe(Object.keys(v).length === 1, 'unterschiedliche Versionsnummern: ' + Object.keys(v).join(', '));
+      return lokal.length + ' Dateien mit ?v=' + Object.keys(v)[0];
+    }); })
+
+    .then(function () { return test('Zusammenführen: Zeit addiert sich, Erledigtes bleibt', function () {
+      return appLaden({ modus: 'offline' }).then(function () {
+        var m = win().RA.mische.spielstand;
+        var basis = { zeit: { a: 100 }, erledigt: {} };
+        var lokal = { zeit: { a: 160 }, erledigt: { a: 50 }, eintraege: { x: { t: 'neu', ts: 9 } }, geaendert: 9 };
+        var fern  = { zeit: { a: 130, b: 20 }, erledigt: { b: 40, a: 70 }, eintraege: { x: { t: 'alt', ts: 5 } }, geaendert: 7 };
+        var z = m(basis, lokal, fern);
+        pruefe(z.zeit.a === 190, 'Zeit a: ' + z.zeit.a + ' statt 190');
+        pruefe(z.zeit.b === 20, 'Zeit b: ' + z.zeit.b + ' statt 20');
+        pruefe(z.erledigt.a === 50 && z.erledigt.b === 40, 'Erledigt: ' + JSON.stringify(z.erledigt));
+        pruefe(z.eintraege.x.t === 'neu', 'Eintrag: ' + JSON.stringify(z.eintraege));
+        pruefe(z.geaendert === 9, 'geaendert: ' + z.geaendert);
+        var leer = m(null, {}, null);
+        pruefe(leer && leer.zeit && !Object.keys(leer.zeit).length, 'leerer Stand kaputt');
+      });
+    }); })
+
+    .then(function () { return test('Ohne Firebase: Hinweis statt Absturz', function () {
+      return appLaden({ modus: 'offline' })
+        .then(function () { return warteAuf('Offline-Hinweis', function () { return q('#neu-laden'); }); })
+        .then(function () { barrierefrei('Offline'); });
+    }); })
+
+    .then(function () { return test('QR-Scan, erstes Mal: Konto wird angelegt, Startseite mit Vorname', function () {
+      return appLaden({ daten: grunddaten(), hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () {
+          pruefe(/Hallo, Mila!/.test(text('h1')), 'h1 ist „' + text('h1') + '“');
+          pruefe(win().ATTRAPPE.konten[MAIL] === CODE, 'Firebase-Konto wurde nicht angelegt');
+          pruefe(!/c=/.test(win().location.href), 'Code steht noch in der Adresse');
+          barrierefrei('Startseite');
+        });
+    }); })
+
+    .then(function () { return test('Fortschritt wird in fortschritt/<code> abgeglichen', function () {
+      return warteAuf('Schreibvorgang', function () { return win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()]; })
+        .then(function (d) {
+          pruefe(typeof d.geaendert === 'number', 'geaendert fehlt');
+          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert'];
+          var fremd = Object.keys(d).filter(function (k) { return erlaubt.indexOf(k) < 0; });
+          pruefe(!fremd.length, 'Felder, die die Regeln ablehnen würden: ' + fremd.join(', '));
+          // Lernzeit dazuzählen und erneut speichern
+          win().RA.store.zeitDazu('probe', 42);
+          return win().RA.cloud.schreiben();
+        })
+        .then(function () {
+          var d = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
+          pruefe(d.zeit && d.zeit.probe === 42, 'Lernzeit nicht gespeichert: ' + JSON.stringify(d.zeit));
+        });
+    }); })
+
+    .then(function () { return test('„Ich bin nicht Mila“ meldet ab', function () {
+      q('#nicht-ich').click();
+      return aufAnmeldung().then(function () { barrierefrei('Anmeldung'); });
+    }); })
+
+    .then(function () { return test('Code eintippen (klein, mit Leerzeichen) meldet an', function () {
+      var konten = {}; konten[MAIL] = CODE;
+      return appLaden({ daten: grunddaten(), konten: konten })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen('test 2345'); })
+        .then(aufStart)
+        .then(function () { pruefe(/Hallo, Mila!/.test(text('h1')), 'h1 ist „' + text('h1') + '“'); });
+    }); })
+
+    .then(function () { return test('Falsches Format: kindgerechte Meldung, kein Netzversuch', function () {
+      return appLaden({ daten: grunddaten() })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen('ABC1'); return fehlertext(); })
+        .then(function (t) {
+          pruefe(/8 Zeichen/.test(t), 'Meldung: ' + t);
+          pruefe(!Object.keys(win().ATTRAPPE.konten).length, 'Es wurde trotzdem ein Konto angelegt');
+          pruefe(doc().activeElement === q('#code'), 'Fokus nicht im Codefeld');
+          return t;
+        });
+    }); })
+
+    .then(function () { return test('Nicht freigeschalteter Code: Meldung und wieder abgemeldet', function () {
+      return appLaden({ daten: grunddaten() })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen(FREMD); return fehlertext(); })
+        .then(function (t) {
+          pruefe(/nicht freigeschaltet/.test(t), 'Meldung: ' + t);
+          pruefe(!win().firebase.auth().currentUser, 'Kind ist noch angemeldet');
+          return t;
+        });
+    }); })
+
+    .then(function () { return test('Halber QR-Scan: Hinweis zum Eintippen', function () {
+      return appLaden({ daten: grunddaten(), hash: '#c=ABC' })
+        .then(aufAnmeldung)
+        .then(fehlertext)
+        .then(function (t) { pruefe(/nicht ganz gelesen/.test(t), 'Meldung: ' + t); return t; });
+    }); })
+
+    .then(function () { return test('Scan eines anderen Kindes schlägt alte Anmeldung (geteiltes iPad)', function () {
+      var d = grunddaten(); d['kinder/abcd2345'] = { vorname: 'Ben' };
+      var konten = {}; konten[MAIL] = CODE;
+      return appLaden({ daten: d, konten: konten, hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () {
+          // Gleiches Fenster, neuer Scan: App neu laden mit anderem Code,
+          // die Attrappe behält dabei ihren Anmeldezustand nicht – deshalb
+          // hier direkt über die Programmschnittstelle wie nach einem Scan.
+          return win().RA.cloud.abmelden();
+        })
+        .then(function () { return win().RA.cloud.anmelden('ABCD2345'); })
+        .then(function () {
+          pruefe(win().RA.cloud.kind().vorname === 'Ben', 'angemeldet ist ' + win().RA.cloud.kind().vorname);
+          pruefe(/abcd2345$/.test(win().RA.store._schluessel()), 'Speicherplatz gehört nicht zu Ben');
+        });
+    }); })
+
+    // ================= Lehrerbereich =================
+    .then(function () { return fetch('/lehrer.html?t=' + Date.now()).then(function (r) { return r.text(); }); })
+    .then(function (t) { lehrerText = t; })
+
+    .then(function () { return test('lehrer.html: noindex und gleiche Versionsnummer', function () {
+      pruefe(/<meta name="robots" content="noindex, nofollow">/.test(lehrerText), 'robots-noindex fehlt');
+      var v1 = (quelltext.match(/\?v=(\d+)/) || [])[1];
+      var lokal = lehrerText.match(/(?:src|href)="(?:js|css)\/[^"]+"/g) || [];
+      var falsch = lokal.filter(function (s) { return s.indexOf('?v=' + v1 + '"') < 0; });
+      pruefe(!falsch.length, 'abweichend von ?v=' + v1 + ': ' + falsch.join(', '));
+    }); })
+
+    .then(function () { return test('Lehrerbereich ohne Anmeldung: Google-Knopf', function () {
+      return lehrerLaden({ googleKonto: null }).then(function () {
+        return warteAuf('Google-Knopf', function () { return q('#google'); });
+      }).then(function () { barrierefrei('Lehrer-Anmeldung'); });
+    }); })
+
+    .then(function () { return test('Fremdes Google-Konto: Hinweis auf istLehrer()', function () {
+      return lehrerLaden({ googleKonto: 'fremd@example.com' })
+        .then(googleKlick)
+        .then(function () {
+          return warteAuf('Fehlermeldung', function () { var m = q('.lmeldung.fehler'); return m && m.textContent; });
+        })
+        .then(function (t) { pruefe(/fremd@example\.com/.test(t) && /istLehrer/.test(t), 'Meldung: ' + t); });
+    }); })
+
+    .then(function () { return test('Lehrkraft sieht die Kinderliste mit „zuletzt aktiv“', function () {
+      return lehrerLaden().then(googleKlick).then(aufLehrerListe).then(function () {
+        var zeile = q('tbody tr');
+        pruefe(zeile && /Mila/.test(zeile.textContent), 'Mila fehlt');
+        pruefe(/TEST-2345/.test(zeile.textContent), 'Code nicht als TEST-2345 angezeigt');
+        pruefe(/vor 2 Tagen/.test(zeile.textContent), 'zuletzt aktiv: ' + zeile.textContent);
+        barrierefrei('Lehrer-Liste');
+      });
+    }); })
+
+    .then(function () { return test('Freischalten: fehlerhafte Liste speichert nichts, gültige schon', function () {
+      q('#json').value = JSON.stringify([{ vorname: 'Ben', code: 'ABCD2345' }, { vorname: '', code: 'XX' }]);
+      q('#freischalten').click();
+      return warteAuf('Fehler', function () { var m = q('#ergebnis .fehler'); return m && m.textContent; })
+        .then(function (t) {
+          pruefe(/Position 2/.test(t), 'Meldung: ' + t);
+          pruefe(!win().ATTRAPPE.daten['kinder/abcd2345'], 'Ben wurde trotz Fehler gespeichert');
+          q('#json').value = JSON.stringify([{ vorname: 'Ben', code: 'abcd-2345' }, { vorname: 'Mila', code: 'TEST2345' }]);
+          q('#freischalten').click();
+          return warteAuf('Ben in der Liste', function () { return /Ben/.test((q('tbody') || {}).textContent || ''); });
+        })
+        .then(function () {
+          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'].vorname === 'Ben', 'Ben nicht gespeichert');
+          pruefe(qa('tbody tr').length === 2, 'Mila doppelt oder fehlt: ' + qa('tbody tr').length + ' Zeilen');
+        });
+    }); })
+
+    .then(function () { return test('Sperren: echter Dialog, Escape bricht ab, Bestätigen sperrt', function () {
+      var knopf = q('[data-sperren="abcd2345"]');
+      knopf.click();
+      var dlg = q('#dialog');
+      pruefe(dlg.open, 'Dialog nicht offen');
+      pruefe(dlg.contains(doc().activeElement), 'Fokus nicht im Dialog');
+      dlg.dispatchEvent(new (win().Event)('cancel'));
+      dlg.close();                                  // wie Escape
+      // Das close-Ereignis kommt verzögert; erst danach setzt die App den Fokus zurück.
+      return warteAuf('Fokus zurück auf dem Sperren-Knopf', function () {
+        return !dlg.open && doc().activeElement === knopf;
+      }, 3000).then(function () {
+        pruefe(win().ATTRAPPE.daten['kinder/abcd2345'], 'Escape hat trotzdem gesperrt');
+        q('[data-sperren="abcd2345"]').click();
+        q('#dialog-ja').click();
+        return warteAuf('Ben gesperrt', function () { return !win().ATTRAPPE.daten['kinder/abcd2345']; });
+      }).then(function () {
+        return warteAuf('Liste neu', function () { return q('tbody') && !/Ben/.test(q('tbody').textContent); });
+      });
+    }); })
+
+    // ================= Rechtstexte =================
+    .then(function () { return test('Datenschutz und Impressum: noindex, Version, ein h1, Links', function () {
+      var v1 = (quelltext.match(/\?v=(\d+)/) || [])[1];
+      return Promise.all(['datenschutz.html', 'impressum.html'].map(function (seite) {
+        return fetch('/' + seite + '?t=' + Date.now()).then(function (r) {
+          pruefe(r.ok, seite + ' fehlt');
+          return r.text();
+        }).then(function (t) {
+          pruefe(/<meta name="robots" content="noindex, nofollow">/.test(t), seite + ': noindex fehlt');
+          var lokal = t.match(/(?:src|href)="(?:js|css)\/[^"]+"/g) || [];
+          lokal.forEach(function (s) { pruefe(s.indexOf('?v=' + v1 + '"') >= 0, seite + ': ' + s + ' statt ?v=' + v1); });
+          var d = new DOMParser().parseFromString(t, 'text/html');
+          pruefe(d.querySelectorAll('h1').length === 1, seite + ': nicht genau ein h1');
+          pruefe(d.querySelector('a[href="index.html"]'), seite + ': Link zurück fehlt');
+          var stufe = 0;
+          Array.prototype.forEach.call(d.querySelectorAll('h1,h2,h3,h4'), function (h) {
+            var n = +h.tagName[1]; pruefe(n <= stufe + 1, seite + ': Überschrift springt auf ' + h.tagName); stufe = n;
+          });
+          pruefe(/setsna@gmail\.com/.test(t), seite + ': Kontaktadresse fehlt');
+        });
+      }));
+    }); })
+
+    .catch(function (e) { eintragen('Testlauf abgebrochen', false, e && e.message || String(e)); })
+    .then(function () {
+      ergebnis.fertig = true;
+      var st = document.getElementById('stand');
+      var gut = ergebnis.fehler === 0;
+      st.className = gut ? 'ok' : 'fehler';
+      st.textContent = (gut ? 'Alles in Ordnung: ' : 'Fehler: ') + ergebnis.ok + ' bestanden, ' + ergebnis.fehler + ' fehlgeschlagen';
+      document.title = (gut ? 'OK' : 'FEHLER') + ' – Riff-Akten-Rauchtest';
+    });
+})();
+</script>
+</body>
+</html>

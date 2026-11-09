@@ -1,0 +1,27 @@
+# Alles ist gesperrt, nur die fertige Seite und die Werkzeuge werden hochgeladen.
+# Eine neue Datei oder ein neuer Ordner auf oberster Ebene muss hier erst
+# freigegeben werden.
+*
+!.gitignore
+!.nojekyll
+!README.md
+!index.html
+!lehrer.html
+!datenschutz.html
+!impressum.html
+!css/
+!css/**
+!js/
+!js/**
+!bilder/
+!bilder/**
+!schriften/
+!schriften/**
+!tools/
+!tools/**
+!firebase/
+!firebase/firestore.rules.beispiel
+
+# Die echten Regeln enthalten die E-Mail-Adresse der Lehrkraft.
+# Sie werden von Hand in die Firebase-Konsole eingefuegt.
+firebase/firestore.rules

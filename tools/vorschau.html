@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Riff-Akten – lokale Vorschau</title>
+</head>
+<body>
+<!-- ==========================================================
+     Lokale Vorschau der Kinder-App, ohne echtes Firebase.
+
+     Lädt das echte index.html mit allen echten Skripten und tauscht
+     nur die drei Firebase-Skripte gegen tools/test/firebase-attrappe.js.
+     Nichts geht an die echte Datenbank.
+
+     Testkind "Mila", Code TEST2345 (freigeschaltet).
+     Der Stand der Attrappe bleibt in diesem Browser erhalten.
+
+       tools/vorschau.html           Mila ist per QR angemeldet
+       tools/vorschau.html?neu       alles von vorn
+       tools/vorschau.html?login     Anmeldebildschirm
+       tools/vorschau.html?offline   ohne Firebase
+
+     Start: powershell -ExecutionPolicy Bypass -File tools\server.ps1
+     Dann:  http://localhost:8123/tools/vorschau.html
+     ========================================================== -->
+<script>
+(function () {
+  var SPEICHER = 'riff-akten-vorschau-attrappe';
+  var CODE = 'TEST2345';
+  var MAIL = CODE.toLowerCase() + '@riff-akten.firebaseapp.com';
+  var p = new URLSearchParams(location.search);
+
+  if (p.has('neu')) { try { localStorage.clear(); } catch (e) {} }
+
+  var szen;
+  try { szen = JSON.parse(localStorage.getItem(SPEICHER)); } catch (e) { szen = null; }
+  if (!szen) {
+    szen = { daten: {}, konten: {} };
+    szen.daten['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila' };
+  }
+  window.VORSCHAU_SZENARIO = szen;
+
+  fetch('/index.html?t=' + Date.now()).then(function (r) { return r.text(); }).then(function (html) {
+    var fb = /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"><\/script>\s*/g;
+    var n = 0;
+    var ersatz = p.has('offline') ? '' :
+      // Der Speicher-Lauscher muss im neuen Dokument stehen:
+      // document.open() löscht die vorher angemeldeten Lauscher.
+      '<script>window.ATTRAPPE = window.VORSCHAU_SZENARIO;' +
+      'addEventListener("pagehide", function () { try { localStorage.setItem("' + SPEICHER + '", ' +
+      'JSON.stringify({ daten: ATTRAPPE.daten, konten: ATTRAPPE.konten })); } catch (e) {} });<\/script>' +
+      '<script src="tools/test/firebase-attrappe.js"><\/script>\n';
+    html = html.replace(fb, function () { return n++ === 0 ? ersatz : ''; });
+    html = html.replace(/<head>/i, '<head><base href="/">');
+    if (!p.has('login') && !p.has('offline') && !location.hash) {
+      history.replaceState(null, '', location.pathname + location.search + '#c=' + CODE);
+    }
+    document.open(); document.write(html); document.close();
+  });
+})();
+</script>
+</body>
+</html>

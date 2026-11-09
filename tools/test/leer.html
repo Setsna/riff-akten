@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<!-- Platzhalter für den Rauchtest. Er schreibt das von der Testseite
+     vorbereitete index.html in sich selbst hinein. Das muss von HIER aus
+     geschehen: Ruft die Testseite document.open() auf, übernimmt das
+     Dokument deren Adresse, und ein #c=… wie nach einem QR-Scan ginge
+     verloren. -->
+<title>leer</title>
+<script>
+addEventListener('load', function () {
+  var html = parent.RAUCHTEST_HTML;
+  document.open(); document.write(html); document.close();
+});
+</script>

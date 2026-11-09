@@ -1,0 +1,362 @@
+/* ==========================================================
+   Riff-Akten – Aussehen
+
+   Schwesterseite der Lernlagune (Lernlagune/DESIGN.md, „Bullaugen
+   in der Lagune“). Übernommen: Maßstab --s, Glasrezept, Navy und
+   Weiß, Libre Caslon nur für Namen und die eine Frage, Andika für
+   alles, was Kinder lesen, Lichtschacht und Randblasen.
+   Eigen: gemalter Riffgrund mit Detektiv-Schreibtisch, Lupe statt
+   Welle unter der Wortmarke, Klaro.
+
+   Maße: Entwurfs-px (iPad hoch = 1088 breit) mal --s.
+   Untergrenzen in px nur für Touchziele (48) und Schrift (15–17).
+   ========================================================== */
+
+@font-face { font-family: 'Libre Caslon Text'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(../schriften/libre-caslon-text.woff2) format('woff2'); }
+@font-face { font-family: 'Andika'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(../schriften/andika-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Andika'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(../schriften/andika-latin-700-normal.woff2) format('woff2'); }
+
+:root {
+  --breite: 100vw;
+  --s: calc(min(var(--breite), 1088px) / 1088);
+
+  --tiefe: #0e2f45;
+  --navy: #0b3155;
+  --navy-weich: #133c5a;
+  --weiss: #ffffff;
+  --glas-kante: rgba(255, 255, 255, 0.5);
+  --glas-glanz: rgba(255, 255, 255, 0.62);
+  --glas-oben: rgba(214, 242, 252, 0.13);
+  --glas-unten: rgba(40, 110, 150, 0.06);
+  --glas-schatten: rgba(3, 20, 35, 0.38);
+  --nebel: rgba(10, 52, 84, 0.7);
+  --fehler: #9d1f17;
+  --fehler-hell: #fde9e6;
+  --sand: #fff4d6;
+  --sand-rand: #c99a1e;
+
+  --serif: 'Libre Caslon Text', Georgia, 'Times New Roman', serif;
+  --sans: 'Andika', 'Trebuchet MS', system-ui, sans-serif;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
+}
+
+/* Querformat (iPad quer, Laptop, Tafel): Maßstab nach der Höhe */
+@media (orientation: landscape) and (min-width: 820px) {
+  :root { --s: min(calc(100svh / 1010), calc(var(--breite) / 1360)); }
+}
+/* Handy hoch */
+@media (max-width: 640px) and (orientation: portrait) {
+  :root { --s: calc(var(--breite) / 600); }
+}
+/* Handy quer */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 1000px) {
+  :root { --s: min(calc(var(--breite) / 1200), calc(100svh / 640)); }
+}
+
+*, ::before, ::after { box-sizing: border-box; }
+/* Randblasen und atmendes Licht dürfen keinen waagrechten Scrollbalken erzeugen */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overflow-x: hidden; overflow-x: clip; }
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--tiefe);
+  color: var(--weiss);
+  font-family: var(--sans);
+  font-size: max(17px, calc(27 * var(--s)));
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+p { margin: 0; }
+:focus-visible { outline: 3px solid var(--weiss); outline-offset: 4px; }
+.unsichtbar {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.klein { font-size: max(15px, calc(21 * var(--s))); }
+
+/* ---------- Grund, Licht, Blasen (fest im Fenster) ---------- */
+.grund {
+  position: fixed; inset: 0; z-index: -3;
+  /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
+  background: url(../bilder/riffgrund.webp?v=5) 50% 0 / cover no-repeat,
+              linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
+}
+.licht {
+  position: fixed; z-index: -2; pointer-events: none;
+  top: 0; left: 50%;
+  width: calc(760 * var(--s)); height: calc(470 * var(--s));
+  transform: translateX(-50%);
+  background: radial-gradient(38% 60% at 50% 0%, rgba(255, 252, 235, 0.42), rgba(220, 244, 250, 0.16) 55%, transparent 78%);
+  opacity: 0.55;
+  animation: licht-atmen 11s ease-in-out infinite alternate;
+}
+@keyframes licht-atmen { to { opacity: 1; transform: translateX(-50%) scaleX(1.08); } }
+
+.blasen { position: fixed; inset: 0; z-index: -2; pointer-events: none; }
+.blasen span {
+  position: absolute; bottom: 0;
+  width: calc(14 * var(--s)); aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(235, 250, 255, 0.55);
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.7) 0 14%, rgba(200, 238, 250, 0.08) 40%, transparent 70%);
+  opacity: 0;
+  animation: blase-steigt 18s linear infinite;
+}
+.blasen span:nth-child(1) { left: 0.8%; animation-duration: 17s; animation-delay: -2s; }
+.blasen span:nth-child(2) { left: 2.2%; width: calc(9 * var(--s)); animation-duration: 22s; animation-delay: -11s; }
+.blasen span:nth-child(3) { left: 3.4%; width: calc(6 * var(--s)); animation-duration: 15s; animation-delay: -7s; }
+.blasen span:nth-child(4) { right: 0.8%; width: calc(11 * var(--s)); animation-duration: 20s; animation-delay: -4s; }
+.blasen span:nth-child(5) { right: 2.4%; width: calc(7 * var(--s)); animation-duration: 16s; animation-delay: -13s; }
+.blasen span:nth-child(6) { right: 3.4%; width: calc(9 * var(--s)); animation-duration: 24s; animation-delay: -18s; }
+@keyframes blase-steigt {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  10% { opacity: 0.9; }
+  50% { transform: translate3d(calc(10 * var(--s)), -50vh, 0); }
+  85% { opacity: 0.7; }
+  100% { transform: translate3d(calc(-6 * var(--s)), -100vh, 0); opacity: 0; }
+}
+body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
+
+/* ---------- Seitenaufbau ---------- */
+/* Die Lichthöfe hinter den Überschriften ragen seitlich über den Rand;
+   abschneiden statt waagrecht scrollen */
+#app { min-height: 100svh; display: flex; flex-direction: column; overflow-x: hidden; overflow-x: clip; }
+
+.kopf {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: calc(110 * var(--s));
+}
+.wortmarke {
+  font-family: var(--serif); font-size: calc(31 * var(--s)); line-height: 1.2;
+  letter-spacing: -0.02em; color: var(--navy);
+}
+.lupe {
+  width: min(62px, calc(80 * var(--s))); height: calc(20 * var(--s)); margin-top: calc(2 * var(--s));
+  fill: none; stroke: #2d6f98; stroke-width: 1.6; stroke-linecap: round;
+}
+
+.inhalt {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 0 calc(24 * var(--s)) calc(60 * var(--s));
+}
+.frage {
+  position: relative; isolation: isolate;
+  margin: calc(18 * var(--s)) 0 0;
+  font-family: var(--serif); font-weight: 500;
+  font-size: calc(89 * var(--s)); line-height: 1.02; letter-spacing: -0.02em;
+  color: var(--navy); text-wrap: balance;
+}
+/* Lichthof: Navy steht nie direkt auf dunklem Wasser */
+.frage::before {
+  content: ''; position: absolute; inset: -30% -20%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(228, 243, 245, 0.88), rgba(228, 243, 245, 0.5) 60%, transparent);
+}
+.frage:focus { outline: none; }
+.frage:focus-visible { outline: 3px solid var(--navy); outline-offset: 6px; }
+.hinweis {
+  position: relative; isolation: isolate;
+  margin-top: calc(26 * var(--s));
+  font-size: max(17px, calc(27 * var(--s))); line-height: 1.3; letter-spacing: -0.01em;
+  color: var(--navy-weich);
+}
+.hinweis::before {
+  content: ''; position: absolute; inset: -40% -10%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(228, 243, 245, 0.75), transparent);
+}
+
+/* ---------- Glasfenster ---------- */
+.fenster {
+  position: relative; isolation: isolate; overflow: hidden;
+  color: var(--weiss);
+  border-radius: calc(108 * var(--s));
+  border: 2px solid var(--glas-kante);
+  background: linear-gradient(180deg, var(--glas-oben), var(--glas-unten) 55%, rgba(8, 42, 70, 0.42));
+  box-shadow:
+    inset 0 2px 0 var(--glas-glanz),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.16),
+    inset 0 0 calc(22 * var(--s)) rgba(200, 240, 255, 0.38),
+    0 26px 50px -10px var(--glas-schatten);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  backdrop-filter: blur(6px) saturate(140%);
+}
+
+/* Eingang: Anmeldung und Offline. Hier steht weiße Schrift auf dem
+   Glas, deshalb dunkler getönt als ein Stationsfenster. */
+.fenster--eingang {
+  width: min(100%, max(320px, calc(560 * var(--s))));
+  margin-top: calc(40 * var(--s));
+  padding: calc(20 * var(--s)) calc(56 * var(--s)) calc(56 * var(--s));
+  border-radius: calc(80 * var(--s));
+  /* Mindestens 0.62 Deckkraft: Weiß bleibt so auch über dem hellsten
+     Lichtschacht bei 4.5:1 (nachgerechnet) */
+  background: linear-gradient(180deg, rgba(10, 52, 84, 0.62), rgba(10, 52, 84, 0.74));
+  display: flex; flex-direction: column; align-items: center;
+}
+
+/* ---------- Klaro ---------- */
+.klaro { display: block; height: auto; filter: drop-shadow(0 calc(14 * var(--s)) calc(16 * var(--s)) rgba(3, 20, 35, 0.35)); }
+.klaro--fenster { width: calc(260 * var(--s)); min-width: 150px; }
+.klaro--start { width: calc(330 * var(--s)); min-width: 170px; margin-top: calc(34 * var(--s)); }
+
+/* ---------- Anmeldung ---------- */
+.anmeldung {
+  width: 100%;
+  display: flex; flex-direction: column; align-items: stretch; text-align: left;
+  margin-top: calc(10 * var(--s));
+}
+.anmeldung label {
+  font-weight: 700; font-size: max(17px, calc(25 * var(--s)));
+  text-shadow: 0 1px 3px rgba(4, 30, 50, 0.55);
+}
+.anmeldung input {
+  margin-top: calc(8 * var(--s));
+  min-height: max(56px, calc(80 * var(--s)));
+  padding: 0 .5em;
+  font-family: var(--sans); font-size: max(22px, calc(38 * var(--s)));
+  letter-spacing: .18em; text-transform: uppercase; text-align: center;
+  color: var(--navy); background: rgba(255, 255, 255, 0.94);
+  border: 2px solid var(--glas-kante); border-radius: calc(28 * var(--s));
+  box-shadow: inset 0 2px 6px rgba(3, 20, 35, 0.18);
+}
+.anmeldung input:focus-visible { outline-offset: 3px; }
+#code-hilfe {
+  margin: calc(10 * var(--s)) 0 calc(18 * var(--s));
+  text-align: center; color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 3px rgba(4, 30, 50, 0.55);
+}
+.meldung.fehler {
+  margin-bottom: calc(18 * var(--s));
+  padding: .5em .8em;
+  border-radius: calc(20 * var(--s));
+  background: var(--fehler-hell); color: var(--fehler);
+  font-weight: 700; text-align: left;
+}
+
+/* ---------- Knopf: weiß mit Navy (wie der Pfeil-Knopf der Lernlagune) ---------- */
+.knopf {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  min-height: max(56px, calc(84 * var(--s)));
+  padding: 0 1.4em;
+  border: 0; border-radius: 999px;
+  background: var(--weiss); color: var(--navy);
+  font-family: var(--sans); font-size: max(18px, calc(28 * var(--s))); font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 calc(22 * var(--s)) rgba(255, 255, 255, 0.5), 0 10px 22px -6px rgba(3, 20, 35, 0.5);
+  transition: transform 220ms var(--ease);
+}
+.knopf__pfeil {
+  width: 1.1em; height: 1.1em;
+  fill: none; stroke: var(--navy); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform 160ms var(--ease);
+}
+.knopf:active { transform: scale(0.96); }
+.knopf:active .knopf__pfeil { transform: translateX(12%); }
+.knopf:disabled { opacity: .7; cursor: default; transform: none; }
+.fenster--eingang .knopf { margin-top: calc(8 * var(--s)); }
+
+/* ---------- Startseite: wer ist angemeldet ---------- */
+.wer {
+  align-self: stretch;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: flex-end;
+  margin: 0 calc(24 * var(--s)) calc(30 * var(--s));
+  margin-top: calc(-80 * var(--s));
+  font-size: max(15px, calc(21 * var(--s)));
+  color: var(--navy);
+}
+.wer__name { text-shadow: 0 0 8px rgba(228, 243, 245, 0.9); }
+.wer__knopf {
+  min-height: 48px; padding: 0 1em;
+  font: inherit; font-weight: 700; color: var(--navy);
+  background: rgba(255, 255, 255, 0.72);
+  border: 2px solid var(--glas-kante); border-radius: 999px;
+  cursor: pointer;
+}
+.wer__knopf:active { transform: scale(0.97); }
+
+/* ---------- Akten ---------- */
+.buehne { width: 100%; display: flex; flex-direction: column; align-items: center; }
+.akten { width: 100%; margin-top: calc(36 * var(--s)); }
+.akten__titel {
+  position: relative; isolation: isolate; display: inline-block;
+  margin: 0;
+  font-family: var(--serif); font-weight: 400; font-size: calc(50 * var(--s)); line-height: 1.05;
+  color: var(--navy);
+}
+/* Navy nur im Licht: heller Hof hinter der Überschrift */
+.akten__titel::before {
+  content: ''; position: absolute; inset: -45% -25%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(228, 243, 245, 0.9), rgba(228, 243, 245, 0.55) 60%, transparent);
+}
+.akten__liste {
+  list-style: none; margin: calc(30 * var(--s)) 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: calc(60 * var(--s)) calc(90 * var(--s));
+}
+/* Platzhalter wie „Neue Station – taucht bald auf“ */
+.fenster--bald {
+  width: max(220px, calc(292 * var(--s))); aspect-ratio: 292 / 305;
+  border-radius: calc(80 * var(--s));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(14 * var(--s));
+  background: var(--nebel);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+}
+.fenster__schloss {
+  width: calc(40 * var(--s)); min-width: 28px; height: auto;
+  fill: none; stroke: var(--weiss); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.fenster__text { font-size: max(15px, calc(20 * var(--s))); line-height: 1.25; }
+
+/* ---------- Speicherleiste ---------- */
+.speicherleiste {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  padding: 12px 16px; font-weight: 700; text-align: center;
+}
+.speicherleiste.fehler { background: var(--fehler); color: var(--weiss); }
+.speicherleiste.wartet { background: var(--sand); color: var(--navy); border-top: 3px solid var(--sand-rand); }
+
+/* ---------- Fußzeile ---------- */
+.fuss {
+  display: flex; gap: 24px; justify-content: center;
+  padding: 8px 16px calc(40px + env(safe-area-inset-bottom));
+  font-size: max(15px, calc(19 * var(--s)));
+}
+.fuss a {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 16px;
+  color: var(--weiss); border-radius: 999px;
+  background: var(--nebel);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+}
+
+/* ---------- Querformat: Klaro neben die Akten, ohne Scrollen ---------- */
+@media (orientation: landscape) and (min-width: 820px) {
+  .kopf { padding-top: calc(64 * var(--s)); }
+  .frage { font-size: calc(80 * var(--s)); }
+  .buehne {
+    flex-direction: row; align-items: center; justify-content: center;
+    gap: calc(80 * var(--s)); margin-top: calc(30 * var(--s));
+  }
+  .klaro--start { margin-top: 0; width: calc(360 * var(--s)); }
+  .akten { width: auto; margin-top: 0; }
+}
+
+/* ---------- Handy hoch ---------- */
+@media (max-width: 640px) and (orientation: portrait) {
+  .kopf { padding-top: calc(96 * var(--s)); }
+  .wer { justify-content: center; margin-top: 0; order: 3; margin-top: calc(20 * var(--s)); }
+  .frage { font-size: calc(84 * var(--s)); }
+  .hinweis { font-size: max(17px, calc(30 * var(--s))); }
+  .fenster--eingang { padding-left: calc(36 * var(--s)); padding-right: calc(36 * var(--s)); }
+}
+
+/* ---------- Weniger Bewegung ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .licht { animation: none; opacity: 0.8; }
+  .blasen { display: none; }
+  .knopf, .knopf__pfeil, .wer__knopf { transition: none; }
+}
