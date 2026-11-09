@@ -817,6 +817,80 @@
         });
     }); })
 
+    .then(function () { return test('Sicherung: alle Bereiche in einer Datei, auch Lernstand gesperrter Kinder', function () {
+      var d = grunddaten();
+      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: { demo: 100 }, eintraege: {}, geaendert: 5 };
+      d['fortschritt/zzzz2345'] = { erledigt: {}, stempel: {}, zeit: { demo: 50 }, eintraege: {}, geaendert: 4 };  // gesperrt
+      d['faelle/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
+      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+      return lehrerLaden({ daten: d })
+        .then(googleKlick)
+        .then(function () { return warteAuf('Sicherung', function () { return q('#sicherung-laden'); }); })
+        .then(function (b) {
+          win().HTMLAnchorElement.prototype.click = function () {};
+          b.click();
+          return warteAuf('Download', function () { return win().RA.lehrer.letzterDownload(); });
+        })
+        .then(function (dl) {
+          pruefe(/^Riff-Akten-Sicherung-\d{4}-\d\d-\d\d\.json$/.test(dl.name), 'Dateiname: ' + dl.name);
+          var D = dl.daten.daten;
+          pruefe(Object.keys(D.kinder).length === 1 && Object.keys(D.fortschritt).length === 2, 'Kinder/Lernstände fehlen');
+          pruefe(D.faelle.demo && D.loesungen.demo, 'Akte oder Lösung fehlt');
+          pruefe(D.fortschritt.zzzz2345, 'Lernstand des gesperrten Kindes fehlt');
+          window.SICHERUNG_TEST = JSON.stringify(dl.daten);
+        });
+    }); })
+
+    .then(function () { return test('Wiederherstellen: ergänzt Fehlendes, überschreibt nur mit Häkchen', function () {
+      var D = win().ATTRAPPE.daten;
+      delete D['kinder/' + CODE.toLowerCase()];
+      delete D['faelle/demo'];
+      D['fortschritt/' + CODE.toLowerCase()].zeit.demo = 999;     // neuerer Stand
+      function dateiWaehlen(text) {
+        var w = win(), dt = new w.DataTransfer();
+        dt.items.add(new w.File([text], 'sicherung.json', { type: 'application/json' }));
+        var inp = q('#wieder-datei');
+        inp.files = dt.files;
+        inp.dispatchEvent(new w.Event('change'));
+      }
+      dateiWaehlen('{"art":"etwas anderes"}');
+      return warteAuf('Fehler bei falscher Datei', function () { return /keine Sicherung/.test(text('#wieder-ergebnis')); })
+        .then(function () {
+          pruefe(q('#wieder-start').disabled, 'Wiederherstellen trotz falscher Datei möglich');
+          dateiWaehlen(window.SICHERUNG_TEST);
+          return warteAuf('gelesen', function () { return !q('#wieder-start').disabled; });
+        })
+        .then(function () {
+          pruefe(/1 Kinder, 2 Lernstände, 1 Akten/.test(text('#wieder-ergebnis')), 'Zusammenfassung: ' + text('#wieder-ergebnis'));
+          q('#wieder-start').click();
+          return warteAuf('Rückfrage', function () { return q('#dialog').open; });
+        })
+        .then(function () {
+          pruefe(/2 Einträge werden ergänzt/.test(text('#dialog-text')), 'Rückfrage: ' + text('#dialog-text'));
+          q('#dialog-ja').click();
+          return warteAuf('ergänzt', function () { return D['kinder/' + CODE.toLowerCase()] && D['faelle/demo']; });
+        })
+        .then(function () {
+          pruefe(D['fortschritt/' + CODE.toLowerCase()].zeit.demo === 999, 'Neuerer Lernstand wurde ohne Häkchen überschrieben');
+          return warteAuf('neu gezeichnet', function () { return q('#wieder-datei') && /wiederhergestellt/.test(text('#wieder-ergebnis')); });
+        })
+        .then(function () {
+          dateiWaehlen(window.SICHERUNG_TEST);
+          return warteAuf('gelesen', function () { return !q('#wieder-start').disabled; });
+        })
+        .then(function () {
+          q('#wieder-ueberschreiben').checked = true;
+          q('#wieder-start').click();
+          return warteAuf('Rückfrage', function () { return q('#dialog').open; });
+        })
+        .then(function () {
+          pruefe(/überschrieben/.test(text('#dialog-text')), 'Rückfrage nennt Überschreiben nicht');
+          q('#dialog-ja').click();
+          return warteAuf('überschrieben', function () { return D['fortschritt/' + CODE.toLowerCase()].zeit.demo === 100; });
+        })
+        .then(function () { barrierefrei('Lehrerbereich mit Sicherung'); });
+    }); })
+
     // ================= Rechtstexte =================
     .then(function () { return test('Datenschutz und Impressum: noindex, Version, ein h1, Links', function () {
       var v1 = (quelltext.match(/\?v=(\d+)/) || [])[1];

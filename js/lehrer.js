@@ -11,7 +11,8 @@
      wird.
 
    Etappe 4: Auswertung (4a); Auskunft als Datei, endgültig Löschen,
-   Aufräumen lange inaktiver Kinder, Kind einzeln anlegen (4b).
+   Aufräumen lange inaktiver Kinder, Kind einzeln anlegen (4b);
+   Sicherung herunterladen und wiederherstellen (4c).
    ========================================================== */
 (function () {
   'use strict';
@@ -221,6 +222,23 @@
         '<div id="aufraeumen-ergebnis" aria-live="polite"></div>' +
       '</section>' +
 
+      '<section class="lkarte" aria-labelledby="t-sicherung">' +
+        '<h2 id="t-sicherung">Sicherung</h2>' +
+        '<p class="lhinweis">Eine Datei mit allen Kindern, Lernständen, Akten und Lösungen. ' +
+          'Sie enthält Namen und Lösungen: sicher aufbewahren, nicht weitergeben, nicht ins Repository legen.</p>' +
+        '<button type="button" class="lknopf" id="sicherung-laden">Sicherung herunterladen</button>' +
+        '<div id="sicherung-ergebnis" aria-live="polite"></div>' +
+        '<h3>Wiederherstellen</h3>' +
+        '<p class="lhinweis">Normalerweise wird nur ergänzt, was fehlt (zum Beispiel versehentlich gelöschte Kinder). ' +
+          'Gelöscht wird nie etwas.</p>' +
+        '<label class="ldatei" for="wieder-datei">Sicherungsdatei wählen</label>' +
+        '<input type="file" id="wieder-datei" accept=".json,application/json">' +
+        '<p class="lcheck"><input type="checkbox" id="wieder-ueberschreiben"> ' +
+          '<label for="wieder-ueberschreiben">Vorhandene Einträge überschreiben (setzt neueren Fortschritt zurück)</label></p>' +
+        '<button type="button" class="lknopf" id="wieder-start" disabled>Wiederherstellen</button>' +
+        '<div id="wieder-ergebnis" aria-live="polite"></div>' +
+      '</section>' +
+
       '<section class="lkarte" aria-labelledby="t-akten">' +
         '<h2 id="t-akten">Akten (' + akten.length + ')</h2>' +
         '<div class="tabelle-rahmen"><table class="tabelle">' +
@@ -275,6 +293,15 @@
     el('neu-anlegen').addEventListener('click', einzelnAnlegen);
     el('neu-vorname').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') einzelnAnlegen(); });
     el('aufraeumen-suchen').addEventListener('click', inaktiveSuchen);
+    el('sicherung-laden').addEventListener('click', function () { sicherungErstellen(this); });
+    el('wieder-datei').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () { wiederLesen(String(rd.result || '')); };
+      rd.readAsText(f, 'utf-8');
+    });
+    el('wieder-start').addEventListener('click', function () { wiederherstellen(this); });
   }
 
   // ---------- Freischalten ----------
@@ -641,6 +668,130 @@
       });
     }, function (e) {
       erg.innerHTML = '<p class="lmeldung fehler">Speichern fehlgeschlagen: ' + esc(e.message) + '</p>';
+    });
+  }
+
+  // ==========================================================
+  // Sicherung (Etappe 4c)
+  // Eine Datei mit allen Sammlungen. Wiederherstellen ergänzt
+  // standardmäßig nur, was fehlt; Überschreiben nur auf Wunsch.
+  // ==========================================================
+  var SAMMLUNGEN = ['kinder', 'fortschritt', 'faelle', 'loesungen', 'einstellungen'];
+  var wiederDaten = null;
+
+  function sammlungLesen(name) {
+    return db.collection(name).get().then(function (snap) {
+      var raus = {};
+      snap.forEach(function (d) { raus[d.id] = d.data(); });
+      return raus;
+    });
+  }
+
+  function sicherungErstellen(knopf) {
+    knopf.disabled = true;
+    var erg = el('sicherung-ergebnis');
+    erg.innerHTML = '<p class="lmeldung">Sicherung wird erstellt …</p>';
+    Promise.all(SAMMLUNGEN.map(sammlungLesen)).then(function (teile) {
+      var daten = {};
+      SAMMLUNGEN.forEach(function (n, i) { daten[n] = teile[i]; });
+      var datei = {
+        art: 'Riff-Akten Sicherung', format: 1, erstellt: new Date().toISOString(),
+        hinweis: 'Enthält Vornamen, Zugangscodes, Lernstände und die Lösungen aller Akten. ' +
+          'Sicher aufbewahren und nicht weitergeben.',
+        daten: daten
+      };
+      herunterladen('Riff-Akten-Sicherung-' + heute() + '.json', datei);
+      erg.innerHTML = '<p class="lmeldung">Sicherung heruntergeladen: ' + zaehlung(daten) + '.</p>';
+      ansagen('Sicherung heruntergeladen.');
+    }, function (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Sicherung fehlgeschlagen: ' + esc(e.message) + '</p>';
+    }).then(function () { knopf.disabled = false; });
+  }
+
+  function zaehlung(daten) {
+    var n = function (s) { return Object.keys(daten[s] || {}).length; };
+    return n('kinder') + ' Kinder, ' + n('fortschritt') + ' Lernstände, ' + n('faelle') + ' Akten, ' +
+      n('loesungen') + ' Lösungen';
+  }
+
+  function sicherungPruefen(d) {
+    if (!d || d.art !== 'Riff-Akten Sicherung' || d.format !== 1 || !d.daten || typeof d.daten !== 'object') {
+      return 'Das ist keine Sicherung der Riff-Akten.';
+    }
+    var fremd = Object.keys(d.daten).filter(function (s) { return SAMMLUNGEN.indexOf(s) < 0; });
+    if (fremd.length) return 'Unbekannte Bereiche in der Sicherung: ' + fremd.join(', ');
+    var kaputt = null;
+    SAMMLUNGEN.forEach(function (s) {
+      var teil = d.daten[s] || {};
+      if (typeof teil !== 'object' || Array.isArray(teil)) kaputt = s;
+      Object.keys(teil).forEach(function (id) {
+        if (!/^[a-z0-9-]{1,40}$/.test(id) || !teil[id] || typeof teil[id] !== 'object') kaputt = s + '/' + id;
+      });
+    });
+    return kaputt ? 'Fehlerhafter Eintrag in der Sicherung: ' + kaputt : null;
+  }
+
+  function wiederLesen(text) {
+    var erg = el('wieder-ergebnis'), d;
+    wiederDaten = null;
+    el('wieder-start').disabled = true;
+    try { d = JSON.parse(text); } catch (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Die Datei konnte nicht gelesen werden: ' + esc(e.message) + '</p>';
+      return;
+    }
+    var f = sicherungPruefen(d);
+    if (f) { erg.innerHTML = '<p class="lmeldung fehler">' + esc(f) + '</p>'; return; }
+    wiederDaten = d;
+    erg.innerHTML = '<p class="lmeldung">Sicherung vom ' + esc(new Date(d.erstellt).toLocaleString('de-DE')) +
+      ': ' + zaehlung(d.daten) + '.</p>';
+    el('wieder-start').disabled = false;
+    ansagen('Sicherung gelesen. Jetzt „Wiederherstellen“ wählen.');
+  }
+
+  function wiederherstellen(knopf) {
+    if (!wiederDaten) return;
+    var ueber = el('wieder-ueberschreiben').checked;
+    var erg = el('wieder-ergebnis');
+    // Was steht schon in der Datenbank?
+    Promise.all(SAMMLUNGEN.map(sammlungLesen)).then(function (jetzt) {
+      var schreiben = [], uebersprungen = 0;
+      SAMMLUNGEN.forEach(function (s, i) {
+        var teil = wiederDaten.daten[s] || {};
+        Object.keys(teil).forEach(function (id) {
+          if (jetzt[i][id] && !ueber) { uebersprungen++; return; }
+          schreiben.push({ s: s, id: id, d: teil[id] });
+        });
+      });
+      if (!schreiben.length) {
+        erg.innerHTML = '<p class="lmeldung">Nichts zu tun: Alle ' + uebersprungen +
+          ' Einträge sind schon vorhanden. Zum Überschreiben das Kästchen ankreuzen.</p>';
+        return null;
+      }
+      return frage('Wiederherstellen?',
+        schreiben.length + ' Einträge werden ' + (ueber ? 'geschrieben; vorhandene werden überschrieben' :
+          'ergänzt; ' + uebersprungen + ' vorhandene bleiben unverändert') + '. Gelöscht wird nichts.',
+        'Wiederherstellen', knopf).then(function (ja) {
+        if (!ja) return null;
+        erg.innerHTML = '<p class="lmeldung">Wird wiederhergestellt …</p>';
+        // Firestore erlaubt höchstens 500 Schreibvorgänge je Batch
+        var stuecke = [];
+        for (var i = 0; i < schreiben.length; i += 400) stuecke.push(schreiben.slice(i, i + 400));
+        return stuecke.reduce(function (p, stueck) {
+          return p.then(function () {
+            var b = db.batch();
+            stueck.forEach(function (w) { b.set(db.collection(w.s).doc(w.id), w.d); });
+            return b.commit();
+          });
+        }, Promise.resolve()).then(function () {
+          return laden().then(function () {
+            var e2 = el('wieder-ergebnis');
+            if (e2) e2.innerHTML = '<p class="lmeldung">' + schreiben.length + ' Einträge wiederhergestellt.</p>';
+            ansagen(schreiben.length + ' Einträge wiederhergestellt.');
+          });
+        });
+      });
+    }).catch(function (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Wiederherstellen fehlgeschlagen: ' + esc(e.message || e) + '</p>';
     });
   }
 

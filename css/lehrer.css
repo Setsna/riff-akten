@@ -4,7 +4,7 @@
    Arbeitsfläche: helle, ruhige Karten, gut lesbar am Laptop und iPad.
    ========================================================== */
 
-.lehrerseite { font-size: 17px; }
+.lehrerseite { font-size: 17px; color-scheme: light; }
 .lehrerseite #app { min-height: 100svh; display: flex; flex-direction: column; }
 
 .lehrer {
@@ -102,3 +102,11 @@
   font: inherit; min-height: 44px; width: min(100%, 320px); padding: 0 .6em;
   border: 2px solid #b9d3dc; border-radius: 10px; color: var(--navy); background: #fff; margin-right: 8px;
 }
+
+/* Sicherung (Etappe 4c) */
+.lcheck { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0; }
+.lcheck input { width: 22px; height: 22px; margin: 2px 0 0; flex: none; }
+.lehrer .lcheck label { display: inline; font-weight: 400; margin: 0; }
+.lehrer h3 { font-family: var(--serif); font-weight: 500; font-size: 1.15rem; margin: 22px 0 8px; color: var(--navy); }
+.lknopf:disabled { opacity: .45; cursor: default; transform: none; }
+.lcheck input { accent-color: var(--navy); }
