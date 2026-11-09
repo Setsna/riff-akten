@@ -22,6 +22,8 @@
 :root {
   --breite: 100vw;
   --s: calc(min(var(--breite), 1088px) / 1088);
+  /* Akten-Fenster und "Mein Detektivbuch" gleich breit */
+  --fenster-breite: max(280px, calc(380 * var(--s)));
 
   --tiefe: #0e2f45;
   --navy: #0b3155;
@@ -83,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=11) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=12) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -300,7 +302,7 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
 }
 /* Platzhalter wie „Neue Station – taucht bald auf“ */
 .fenster--bald {
-  width: max(220px, calc(292 * var(--s))); aspect-ratio: 292 / 305;
+  width: var(--fenster-breite); aspect-ratio: 10 / 9;
   border-radius: calc(80 * var(--s));
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(14 * var(--s));
   background: var(--nebel);
@@ -315,7 +317,7 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
 /* ---------- Startseite: Fenster zum Detektivbuch ---------- */
 .fenster--buch {
   display: flex; align-items: center; justify-content: center; gap: .6em;
-  width: max(260px, calc(380 * var(--s))); min-height: max(64px, calc(96 * var(--s)));
+  width: var(--fenster-breite); min-height: max(64px, calc(96 * var(--s)));
   margin: calc(48 * var(--s)) auto 0;
   border-radius: 999px;
   background: var(--nebel);
@@ -476,7 +478,7 @@ a.knopf { text-decoration: none; }
 /* Wie eine Karteikarte: Bild oben über die ganze Breite, Text darunter.
    Gleiche Größe wie das Fenster „taucht bald auf“. */
 .fenster--akte {
-  width: max(220px, calc(292 * var(--s))); aspect-ratio: 292 / 305;
+  width: var(--fenster-breite); aspect-ratio: 10 / 9;
   border-radius: calc(80 * var(--s));
   display: flex; flex-direction: column;
   background: linear-gradient(180deg, rgba(10, 52, 84, 0.62), rgba(10, 52, 84, 0.74));
@@ -498,9 +500,9 @@ a.knopf { text-decoration: none; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3em;
   padding: .4em 1em .8em;
 }
-.fenster__nr { font-size: max(13px, calc(17 * var(--s))); letter-spacing: .08em; text-transform: uppercase; }
+.fenster__nr { font-size: max(14px, calc(19 * var(--s))); letter-spacing: .08em; text-transform: uppercase; }
 .fenster__titel {
-  font-family: var(--serif); font-size: max(17px, calc(26 * var(--s))); line-height: 1.1;
+  font-family: var(--serif); font-size: max(21px, calc(30 * var(--s))); line-height: 1.1;
   hyphens: auto; -webkit-hyphens: auto; text-wrap: balance;
 }
 /* "gelöst" als Schild oben auf dem Bild */
