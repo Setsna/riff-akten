@@ -83,7 +83,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=6) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=8) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -469,6 +469,185 @@ a.knopf { text-decoration: none; }
 
 @media (max-width: 640px) and (orientation: portrait) {
   .zurueck { margin-top: calc(20 * var(--s)); order: 3; align-self: center; }
+}
+
+/* ---------- Startseite: Akten als Glasfenster ---------- */
+.akten__liste > li { list-style: none; }
+.fenster--akte {
+  width: max(220px, calc(292 * var(--s))); aspect-ratio: 292 / 305;
+  border-radius: calc(80 * var(--s));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(10 * var(--s));
+  padding: calc(24 * var(--s));
+  background: linear-gradient(180deg, rgba(10, 52, 84, 0.62), rgba(10, 52, 84, 0.74));
+  color: var(--weiss); text-decoration: none; text-align: center;
+}
+.fenster--akte:active { transform: scale(0.97); }
+.fenster__bild { width: 70%; height: auto; border-radius: 50%; }
+.fenster__lupe {
+  width: calc(64 * var(--s)); min-width: 40px; height: auto;
+  fill: none; stroke: var(--weiss); stroke-width: 1.6; stroke-linecap: round;
+}
+.fenster__nr { font-size: max(14px, calc(19 * var(--s))); letter-spacing: .08em; text-transform: uppercase; }
+.fenster__titel { font-family: var(--serif); font-size: max(20px, calc(32 * var(--s))); line-height: 1.1; }
+.fenster__status {
+  padding: .15em .8em; border-radius: 999px;
+  background: var(--weiss); color: var(--navy); font-weight: 700;
+  font-size: max(14px, calc(18 * var(--s)));
+}
+
+/* ---------- Akte ---------- */
+.akte__nr {
+  position: relative; isolation: isolate; margin-top: calc(10 * var(--s));
+  font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--navy);
+  font-size: max(14px, calc(20 * var(--s)));
+}
+.akte__nr::before {
+  content: ''; position: absolute; inset: -40% -20%; z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(228, 243, 245, 0.85), transparent);
+}
+
+/* Lange Akten-Titel dürfen auf schmalen Geräten nicht überstehen */
+.akte .frage { font-size: min(calc(80 * var(--s)), 10.5vw); hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+/* Stationsleiste: Nummern immer sichtbar, Namen ab Tabletbreite */
+.stationen { width: min(100%, 980px); margin-top: calc(34 * var(--s)); }
+.stationen ol {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+}
+.stationen__punkt {
+  display: inline-flex; align-items: center; gap: .35em;
+  min-height: 48px; padding: 0 .9em;
+  border-radius: 999px; text-decoration: none;
+  font-weight: 700; font-size: max(14px, calc(19 * var(--s)));
+  background: rgba(255, 255, 255, 0.8); color: var(--navy);
+  border: 2px solid transparent;
+}
+.stationen__nr {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.7em; height: 1.7em; border-radius: 50%;
+  background: var(--navy); color: var(--weiss);
+}
+.stationen__punkt.ist-hier { background: var(--weiss); border-color: var(--navy); }
+.stationen__punkt.ist-zu { background: var(--nebel); color: var(--weiss); }
+.stationen__punkt.ist-zu .stationen__nr { background: rgba(255, 255, 255, 0.25); }
+@media (max-width: 900px) {
+  .stationen__punkt:not(.ist-hier) .stationen__name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+
+/* Station: helles Papier, Navy-Schrift */
+.station {
+  width: min(100%, 860px);
+  margin-top: calc(30 * var(--s));
+  padding: calc(34 * var(--s)) calc(40 * var(--s)) calc(40 * var(--s));
+  border-radius: calc(40 * var(--s));
+  background: rgba(251, 247, 236, 0.96); color: var(--navy);
+  text-align: left;
+  box-shadow: 0 26px 50px -10px var(--glas-schatten);
+}
+.station__titel { margin: 0 0 .6em; font-family: var(--serif); font-weight: 400; font-size: max(24px, calc(44 * var(--s))); line-height: 1.1; }
+.akte__geschichte p + p { margin-top: .6em; }
+.akte__geschichte ul { margin: .6em 0 0; padding-left: 1.2em; }
+.akte__geschichte li + li { margin-top: .4em; }
+.akte__frage {
+  margin-top: 1em; padding: .8em 1em;
+  border-left: 6px solid var(--navy); border-radius: 12px;
+  background: #e4f3f5; font-weight: 700;
+}
+.akte__frage-titel { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: #23557a; }
+.akte__nachlesen { margin-top: 1em; }
+.akte__nachlesen summary {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 1em;
+  border-radius: 999px; border: 2px solid var(--navy); cursor: pointer; font-weight: 700;
+}
+.akte__nachlesen[open] summary { margin-bottom: .8em; }
+.akte__hilfe { margin-top: 1em; }
+.akte__hilfe .knopf--leise { border: 2px solid var(--navy); background: var(--weiss); }
+
+/* Hinweiskarten */
+.karten { display: grid; gap: 12px; }
+.karte {
+  padding: .8em 1em; border-radius: 16px;
+  background: var(--weiss); border: 2px solid rgba(11, 49, 85, 0.25);
+}
+.karte__titel { font-weight: 700; margin-bottom: .3em; }
+.karte__art {
+  display: inline-block; padding: 0 .5em; margin-right: .2em; border-radius: 999px;
+  background: var(--navy); color: var(--weiss); font-size: .8em;
+}
+.karte__ton { width: 100%; margin-top: .3em; }
+.karte__mitlesen { margin-top: .4em; }
+.karte__mitlesen summary { cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; text-decoration: underline; }
+.karte__tabelle { border-collapse: collapse; margin-top: .2em; }
+.karte__tabelle th, .karte__tabelle td { padding: .3em .8em; border: 1px solid rgba(11, 49, 85, 0.35); text-align: left; }
+.karte__tabelle th { background: #e4f3f5; }
+
+/* Aufgaben */
+.aufgabe { margin-top: 1.6em; padding-top: 1.2em; border-top: 2px dashed rgba(11, 49, 85, 0.25); }
+.aufgabe__frage { margin: 0 0 .6em; font-size: 1.05em; }
+.aufgabe__tipp { margin: .4em 0 .6em; color: #23557a; }
+.optionen { display: flex; flex-direction: column; gap: 10px; }
+.optionen--ziele { flex-direction: row; flex-wrap: wrap; margin-top: 10px; }
+.option {
+  display: flex; align-items: center; justify-content: space-between; gap: .6em;
+  min-height: 52px; padding: .5em 1em;
+  font: inherit; text-align: left; color: var(--navy);
+  background: var(--weiss); border: 3px solid rgba(11, 49, 85, 0.3); border-radius: 18px;
+  cursor: pointer;
+}
+.optionen--ziele .option { flex: 1 1 12em; }
+.option[aria-pressed="true"] { border-color: var(--navy); background: #e4f3f5; font-weight: 700; }
+.option[aria-pressed="true"]::before { content: '●'; margin-right: .2em; }
+.option:disabled { cursor: default; opacity: 1; }
+.option.ist-richtig { border-color: #1e6b3a; background: #e3f4e8; }
+.option.ist-falsch { border-color: var(--fehler); background: var(--fehler-hell); }
+.option__text { flex: 1; }
+.option__mark { font-weight: 700; white-space: nowrap; }
+.option.ist-richtig .option__mark { color: #1e6b3a; }
+.option.ist-falsch .option__mark { color: var(--fehler); }
+.option:focus-visible, .akte__nachlesen summary:focus-visible, .karte__mitlesen summary:focus-visible { outline-color: var(--navy); }
+.station .knopf:focus-visible { outline-color: var(--navy); }
+.aufgabe__pruefen { margin-top: 14px; border: 2px solid var(--navy); }
+.paare { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.paar__wort { font-weight: 700; font-size: 1.05em; }
+.paar__erklaerung { margin-top: 8px; padding: .4em .8em; border-radius: 12px; background: #e4f3f5; }
+.rueckmeldung { margin-top: 14px; padding: .8em 1em; border-radius: 16px; }
+.rueckmeldung:focus { outline: none; }
+.rueckmeldung:focus-visible { outline: 3px solid var(--navy); }
+.rueckmeldung--richtig { background: #e3f4e8; border: 2px solid #1e6b3a; }
+.rueckmeldung--fast, .rueckmeldung--nein { background: var(--sand); border: 2px solid var(--sand-rand); }
+.rueckmeldung--fehler { background: var(--fehler-hell); color: var(--fehler); font-weight: 700; }
+.rueckmeldung__urteil { font-weight: 700; margin-bottom: .3em; }
+.rueckmeldung__zahl { font-weight: 400; }
+.muster { margin-top: 12px; padding: .8em 1em; border-radius: 16px; background: #e4f3f5; }
+.muster:focus { outline: none; }
+.muster__titel, .muster__frage { font-weight: 700; margin: .4em 0; }
+.aufgabe--zusatz {
+  margin-top: 1.8em; padding: 1em 1.2em; border-radius: 20px;
+  border: 3px dashed var(--navy);
+}
+.aufgabe--zusatz .aufgabe { margin-top: .6em; border-top: 0; padding-top: 0; }
+.zusatz__titel { font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: .85em; }
+.station__weiter { margin-top: 1.4em; color: #23557a; }
+.station__weiter:empty { display: none; }
+.station__unten { margin-top: 1.2em; display: flex; justify-content: flex-end; }
+.station__unten .knopf { border: 2px solid var(--navy); }
+.station__unten .knopf:disabled { opacity: .55; }
+
+/* Abschluss */
+.fertig__stempel { display: flex; align-items: center; justify-content: center; gap: calc(40 * var(--s)); margin-top: calc(30 * var(--s)); }
+.fertig__stempel .stempel__marke {
+  width: max(150px, calc(230 * var(--s))); transform: rotate(-8deg);
+  background: rgba(251, 247, 236, 0.95); border-radius: 50%;
+}
+.klaro--fertig { width: calc(260 * var(--s)); min-width: 140px; }
+.hilfe__text p + p { margin-top: .5em; }
+.hilfe__text { margin: 16px 0 20px; text-align: left; }
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .station { padding: 20px 18px 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fenster--akte:active { transform: none; }
 }
 
 /* ---------- Speicherleiste ---------- */

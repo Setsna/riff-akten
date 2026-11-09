@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=6" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=8" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).
@@ -152,7 +152,7 @@ window.RA = window.RA || {};
         '<div class="buehne">' + klaro('klaro--start') +
         '<section class="akten" aria-labelledby="akten-titel">' +
           '<h2 id="akten-titel" class="akten__titel">Deine Akten</h2>' +
-          '<ul class="akten__liste">' +
+          '<ul class="akten__liste" id="akten-liste">' +
             '<li class="fenster fenster--bald">' +
               '<svg class="fenster__schloss" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
                 '<rect x="5" y="10.5" width="14" height="10" rx="2.5"></rect>' +
@@ -170,6 +170,7 @@ window.RA = window.RA || {};
         '</section></div>' +
       '</main>'
     );
+    if (RA.akten) RA.akten.listeFuellen(document.getElementById('akten-liste'));
     document.getElementById('nicht-ich').addEventListener('click', function () {
       this.disabled = true;
       if (RA.uhr) RA.uhr.stopp();
@@ -208,11 +209,23 @@ window.RA = window.RA || {};
     document.body.classList.toggle('ruht', document.hidden);
   });
 
-  // ---------- Wege: #buch = Detektivbuch, sonst Startseite ----------
+  // ---------- Wege ----------
+  //   #buch             Detektivbuch
+  //   #akte/<id>[/<n>]  eine Akte (Station n, 1 … 6)
+  //   sonst             Startseite
   // Über den Hash, damit auch die Zurück-Geste des iPads funktioniert.
+  // Die Lernzeit-Uhr läuft nur, solange eine Akte offen ist.
   function weg() {
     if (!RA.cloud.angemeldet()) return;
-    if (location.hash === '#buch' && RA.buch) RA.buch.zeigen();
+    var h = location.hash;
+    var akte = /^#akte\/([a-z0-9-]+)(?:\/(\d+))?$/.exec(h);
+    if (akte && RA.akten) {
+      if (RA.uhr && RA.uhr.laeuft() !== akte[1]) RA.uhr.start(akte[1]);
+      RA.akten.zeigen(akte[1], akte[2] ? Number(akte[2]) - 1 : undefined);
+      return;
+    }
+    if (RA.uhr) RA.uhr.stopp();
+    if (h === '#buch' && RA.buch) RA.buch.zeigen();
     else startseite();
   }
   window.addEventListener('hashchange', weg);

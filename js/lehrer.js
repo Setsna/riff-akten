@@ -21,6 +21,7 @@
   var liveEl = document.getElementById('live');
   var auth = null, db = null, nutzer = null;
   var kinder = [];
+  var akten = [];
   var CODE_RE = new RegExp('^[' + C.code.alphabet + ']{' + C.code.laenge + '}$');
 
   function esc(s) {
@@ -56,14 +57,16 @@
     return new Promise(function (fertig) {
       function zu(antwort) {
         el('dialog-ja').onclick = el('dialog-nein').onclick = null;
-        d.onclose = null;
+        d.onclose = d.oncancel = null;
         if (d.open) d.close();
         if (vorher && vorher.focus) vorher.focus();
         fertig(antwort);
       }
       el('dialog-ja').onclick = function () { zu(true); };
       el('dialog-nein').onclick = function () { zu(false); };
-      d.onclose = function () { zu(false); };          // Escape
+      // Escape: "cancel" kommt sofort, "close" in manchen Browsern verspätet
+      d.oncancel = function (ev) { ev.preventDefault(); zu(false); };
+      d.onclose = function () { zu(false); };
       d.showModal();
       el('dialog-nein').focus();
     });
@@ -119,6 +122,12 @@
           .then(function (f) { k.stand = f.exists ? f.data() : null; })
           .catch(function () { k.stand = null; });
       }));
+    }).then(function () {
+      return db.collection('faelle').get().then(function (snap) {
+        akten = [];
+        snap.forEach(function (d) { akten.push(Object.assign({ id: d.id }, d.data())); });
+        akten.sort(function (a, b) { return (a.nr || 99) - (b.nr || 99); });
+      });
     }).then(zeichnen, function (e) {
       var keinZugriff = e && e.code === 'permission-denied';
       zeigen(kopf() +
@@ -180,6 +189,30 @@
         '<textarea id="json" rows="5" spellcheck="false"></textarea>' +
         '<button type="button" class="lknopf" id="freischalten">Kinder freischalten</button>' +
         '<div id="ergebnis" aria-live="polite"></div>' +
+      '</section>' +
+
+      '<section class="lkarte" aria-labelledby="t-akten">' +
+        '<h2 id="t-akten">Akten (' + akten.length + ')</h2>' +
+        '<div class="tabelle-rahmen"><table class="tabelle">' +
+          '<caption class="unsichtbar">Vorhandene Akten</caption>' +
+          '<thead><tr><th scope="col">Nr.</th><th scope="col">Titel</th><th scope="col">Kennung</th>' +
+          '<th scope="col">Klasse</th><th scope="col">Sichtbar</th></tr></thead>' +
+          '<tbody>' + (akten.map(function (a) {
+            return '<tr><td>' + esc(a.nr || '') + '</td><th scope="row">' + esc(a.titel) + '</th>' +
+              '<td class="code">' + esc(a.id) + '</td><td>' + esc(a.klasse || '') + '</td>' +
+              '<td>' + (a.aktiv === false ? 'nein' : 'ja') + '</td></tr>';
+          }).join('') || '<tr><td colspan="5">Noch keine Akten.</td></tr>') + '</tbody>' +
+        '</table></div>' +
+        '<h3>Akte hochladen</h3>' +
+        '<p class="lhinweis">Lade eine Fall-Datei (<b>.json</b> mit <code>id</code>, <code>fall</code> und ' +
+          '<code>loesung</code>). Die Datei wird vorher geprüft. Gibt es die Kennung schon, wird die Akte ' +
+          'ersetzt; der Fortschritt der Kinder bleibt.</p>' +
+        '<label class="ldatei" for="akte-datei">Fall-Datei wählen</label>' +
+        '<input type="file" id="akte-datei" accept=".json,application/json">' +
+        '<label for="akte-json">Inhalt der Fall-Datei</label>' +
+        '<textarea id="akte-json" rows="5" spellcheck="false"></textarea>' +
+        '<button type="button" class="lknopf" id="akte-hochladen">Akte prüfen und hochladen</button>' +
+        '<div id="akte-ergebnis" aria-live="polite"></div>' +
       '</section>');
 
     bindeKopf();
@@ -191,6 +224,14 @@
       r.readAsText(f, 'utf-8');
     });
     el('freischalten').addEventListener('click', freischalten);
+    el('akte-datei').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () { el('akte-json').value = String(r.result || ''); ansagen('Datei geladen. Jetzt „Akte prüfen und hochladen“ wählen.'); };
+      r.readAsText(f, 'utf-8');
+    });
+    el('akte-hochladen').addEventListener('click', aktenHochladen);
     Array.prototype.forEach.call(document.querySelectorAll('[data-sperren]'), function (b) {
       b.addEventListener('click', function () { sperren(b.getAttribute('data-sperren'), b); });
     });
@@ -223,7 +264,10 @@
     erg.innerHTML = '<p class="lmeldung">Wird gespeichert …</p>';
     var batch = db.batch();
     gut.forEach(function (k) {
-      batch.set(db.collection('kinder').doc(k.id), { vorname: k.vorname, angelegt: Date.now() }, { merge: true });
+      // "angelegt" nur beim ersten Mal (steht als "Detektiv seit" auf dem Ausweis)
+      var neu = !kinder.some(function (x) { return x.id === k.id; });
+      batch.set(db.collection('kinder').doc(k.id),
+        neu ? { vorname: k.vorname, angelegt: Date.now() } : { vorname: k.vorname }, { merge: true });
     });
     batch.commit().then(function () {
       laden();
@@ -249,6 +293,41 @@
           frage('Sperren fehlgeschlagen', e.message || String(e), 'OK');
         });
       });
+  }
+
+
+  // ==========================================================
+  // Akten hochladen (Etappe 3; der richtige Fall-Editor kommt in Etappe 4)
+  //
+  // Datei: { "id": "pausenbrot", "fall": {...}, "loesung": {...} }
+  // Format: siehe tools/test/demo-fall.js. Gespeichert wird in zwei
+  // Dokumente: faelle/<id> (sehen die Kinder) und loesungen/<id>
+  // (wird erst beim Prüfen geladen).
+  // ==========================================================
+  function aktenHochladen() {
+    var erg = el('akte-ergebnis'), d;
+    try { d = JSON.parse(el('akte-json').value.trim()); } catch (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Die Datei konnte nicht gelesen werden: ' + esc(e.message) + '</p>';
+      return;
+    }
+    var fehlerliste = RA.fallPruefen(d);
+    if (fehlerliste.length) {
+      erg.innerHTML = '<div class="lmeldung fehler"><p>Es wurde nichts gespeichert. Bitte korrigieren:</p><ul>' +
+        fehlerliste.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+      return;
+    }
+    var fall = Object.assign({ aktiv: true }, d.fall);
+    var vorhanden = akten.some(function (a) { return a.id === d.id; });
+    erg.innerHTML = '<p class="lmeldung">Wird gespeichert …</p>';
+    var batch = db.batch();
+    batch.set(db.collection('faelle').doc(d.id), fall);
+    batch.set(db.collection('loesungen').doc(d.id), d.loesung);
+    batch.commit().then(function () {
+      laden();
+      ansagen('Akte „' + fall.titel + '“ ' + (vorhanden ? 'ersetzt.' : 'gespeichert.'));
+    }, function (e) {
+      erg.innerHTML = '<p class="lmeldung fehler">Speichern fehlgeschlagen: ' + esc(e.message) + '</p>';
+    });
   }
 
   // Testhilfe für den Rauchtest

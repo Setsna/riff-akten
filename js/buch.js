@@ -19,7 +19,7 @@ window.RA = window.RA || {};
   'use strict';
 
   var C = RA.config;
-  var V = '?v=6';
+  var V = '?v=8';
 
   function abzeichenDaten(id) {
     for (var i = 0; i < C.abzeichen.length; i++) if (C.abzeichen[i].id === id) return C.abzeichen[i];
@@ -173,12 +173,12 @@ window.RA = window.RA || {};
 
         '<section class="buch__teil" aria-labelledby="t-stempel">' +
           '<h2 id="t-stempel" class="buch__titel">Meine Stempel</h2>' +
-          stempelHtml(s) +
+          '<div id="stempel-platz">' + stempelHtml(s) + '</div>' +
         '</section>' +
 
         '<section class="buch__teil" aria-labelledby="t-zeit">' +
           '<h2 id="t-zeit" class="buch__titel">Meine Lernzeit</h2>' +
-          lernzeitHtml(s) +
+          '<div id="zeit-platz">' + lernzeitHtml(s) + '</div>' +
         '</section>' +
       '</main>' +
 
@@ -191,6 +191,17 @@ window.RA = window.RA || {};
     document.getElementById('ausweis-pdf').addEventListener('click', function () {
       pdfMachen(this);
     });
+
+    // Titel der Akten nachladen (nach einem Neuladen direkt im Buch)
+    if (RA.akten && (Object.keys(s.stempel || {}).length || Object.keys(s.zeit || {}).length)) {
+      RA.akten.liste().then(function () {
+        var sp = document.getElementById('stempel-platz'), zp = document.getElementById('zeit-platz');
+        if (!sp || !zp) return;
+        var neu = RA.store.snapshot();
+        sp.innerHTML = stempelHtml(neu);
+        zp.innerHTML = lernzeitHtml(neu);
+      }, function () {});
+    }
   }
 
   // ==========================================================
@@ -215,8 +226,13 @@ window.RA = window.RA || {};
     var d = document.getElementById('abzeichen-dialog');
     var gewaehlt = null;
 
-    function zu() { d.close(); }
+    var vorbei = false;
+    // Schließen per Knopf ruft fertig() direkt auf; das close-Ereignis
+    // braucht es nur für Escape (manche Browser liefern es verspätet).
+    function zu() { if (d.open) d.close(); fertig(); }
     function fertig() {
+      if (vorbei) return;
+      vorbei = true;
       d.removeEventListener('close', fertig);
       if (gewaehlt) {
         // Nur den Ausweis neu zeichnen, der Rest der Seite bleibt
@@ -230,6 +246,7 @@ window.RA = window.RA || {};
     }
 
     d.addEventListener('close', fertig);
+    d.oncancel = function (ev) { ev.preventDefault(); zu(); };   // Escape
     document.getElementById('wahl-zu').onclick = zu;
     Array.prototype.forEach.call(d.querySelectorAll('.wahl__knopf'), function (b) {
       b.onclick = function () {

@@ -26,6 +26,7 @@
   A.daten = A.daten || {};        // 'sammlung/kennung' -> Dokument
   A.konten = A.konten || {};      // mail -> passwort
   A.schreibvorgaenge = [];        // Protokoll: { pfad, daten, merge }
+  A.gelesen = [];                 // Protokoll: gelesene Dokumente (Pfade)
 
   function kopie(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
   function bald(f) { return new Promise(function (ok) { setTimeout(ok, 5); }).then(f); }
@@ -73,10 +74,13 @@
 
   // Vereinfachte Regeln: Ist ATTRAPPE.lehrer gesetzt (Liste von
   // E-Mail-Adressen), darf nur eine Lehrkraft die ganze Sammlung
-  // "kinder" lesen und dort schreiben oder löschen – wie istLehrer()
-  // in firebase/firestore.rules.beispiel.
-  function lehrerPruefen(sammlung) {
-    if (!A.lehrer || sammlung !== 'kinder') return;
+  // "kinder" lesen und dort schreiben oder löschen, und nur sie darf
+  // in "faelle" und "loesungen" schreiben – wie istLehrer() in
+  // firebase/firestore.rules.beispiel.
+  function lehrerPruefen(sammlung, schreiben) {
+    var geschuetzt = sammlung === 'kinder' ||
+      (schreiben && (sammlung === 'faelle' || sammlung === 'loesungen'));
+    if (!A.lehrer || !geschuetzt) return;
     if (!nutzer || A.lehrer.indexOf(nutzer.email) < 0) throw fehler('permission-denied');
   }
 
@@ -104,11 +108,11 @@
     return {
       id: id, pfad: pfad,
       sammlung: sammlung,
-      get: function () { return bald(function () { return schnappschuss(pfad); }); },
-      set: function (d, opt) { return bald(function () { lehrerPruefen(sammlung); schreiben(pfad, d, opt); }); },
+      get: function () { return bald(function () { A.gelesen.push(pfad); return schnappschuss(pfad); }); },
+      set: function (d, opt) { return bald(function () { lehrerPruefen(sammlung, true); schreiben(pfad, d, opt); }); },
       delete: function () {
         return bald(function () {
-          lehrerPruefen(sammlung);
+          lehrerPruefen(sammlung, true);
           delete A.daten[pfad];
           A.schreibvorgaenge.push({ pfad: pfad, geloescht: true });
         });
@@ -147,7 +151,7 @@
     batch: function () {
       var schritte = [];
       return {
-        set: function (ref, d, opt) { schritte.push(function () { lehrerPruefen(ref.sammlung); schreiben(ref.pfad, d, opt); }); },
+        set: function (ref, d, opt) { schritte.push(function () { lehrerPruefen(ref.sammlung, true); schreiben(ref.pfad, d, opt); }); },
         commit: function () { return bald(function () { schritte.forEach(function (s) { s(); }); }); }
       };
     },

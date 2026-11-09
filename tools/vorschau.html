@@ -25,6 +25,7 @@
      Start: powershell -ExecutionPolicy Bypass -File tools\server.ps1
      Dann:  http://localhost:8123/tools/vorschau.html
      ========================================================== -->
+<script src="test/demo-fall.js"></script>
 <script>
 (function () {
   var SPEICHER = 'riff-akten-vorschau-attrappe';
@@ -40,6 +41,10 @@
     szen = { daten: {}, konten: {} };
     szen.daten['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila', angelegt: Date.parse('2026-09-01T08:00:00') };
   }
+  // Demo-Fall (tools/test/demo-fall.js), echte Fälle gibt es nur in Firestore
+  var D = window.DEMO_FALL;
+  szen.daten['faelle/' + D.id] = D.fall;
+  szen.daten['loesungen/' + D.id] = D.loesung;
   window.VORSCHAU_SZENARIO = szen;
 
   fetch('/index.html?t=' + Date.now()).then(function (r) { return r.text(); }).then(function (html) {

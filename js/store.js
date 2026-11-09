@@ -69,7 +69,37 @@ window.RA = window.RA || {};
     geaendert();
   }
 
+  // Fortschritt in einer Akte: eintraege[<akte>] = { station, eintrag, selbst, ts }
+  //   station  bis zu welcher Station das Kind gekommen ist (0 … 6)
+  //   eintrag  Auswahl in "Mein Eintrag" (Kennungen, kein Freitext)
+  //   selbst   Selbsteinschätzung bei Merkfragen (0, 1, 2)
+  // Der jüngere Eintrag gewinnt beim Abgleich (js/merge.js).
+  function akteMerken(id, aenderung) {
+    if (!id) return;
+    var alt = s.eintraege[id] || {};
+    var neu = JSON.parse(JSON.stringify(alt));
+    Object.keys(aenderung).forEach(function (k) {
+      var v = aenderung[k];
+      if (v && typeof v === 'object') neu[k] = Object.assign({}, neu[k] || {}, v);
+      else if (k === 'station') neu.station = Math.max(neu.station || 0, v);
+      else neu[k] = v;
+    });
+    neu.ts = Date.now();
+    s.eintraege[id] = neu;
+    geaendert();
+  }
+
+  // Akte fertig: einmal erledigt, ein Stempel (der erste Zeitpunkt bleibt).
+  function akteAbschliessen(id, stationen) {
+    var jetzt = Date.now();
+    if (!s.erledigt[id]) s.erledigt[id] = jetzt;
+    if (!s.stempel[id]) s.stempel[id] = jetzt;
+    akteMerken(id, { station: stationen });
+  }
+
   RA.store = {
+    akteMerken: akteMerken,
+    akteAbschliessen: akteAbschliessen,
     useProfile: useProfile,
     snapshot: function () { return JSON.parse(JSON.stringify(s)); },
     basis: basis,

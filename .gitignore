@@ -17,6 +17,8 @@
 !bilder/**
 !schriften/
 !schriften/**
+!audio/
+!audio/**
 !tools/
 !tools/**
 !firebase/

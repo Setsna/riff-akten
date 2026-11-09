@@ -37,6 +37,7 @@
   <div><ol id="liste"></ol></div>
   <iframe id="app" title="App im Test"></iframe>
 </div>
+<script src="test/demo-fall.js"></script>
 <script>
 (function () {
   'use strict';
@@ -169,6 +170,19 @@
     var d = {};
     d['kinder/' + CODE.toLowerCase()] = { vorname: 'Mila', angelegt: Date.parse('2026-09-01T08:00:00') };
     return d;
+  }
+  // Grunddaten plus Demo-Fall (tools/test/demo-fall.js).
+  // Die Merkfrage bekommt eine kurze Bedenkzeit, damit der Test nicht 15 s wartet.
+  function mitDemo() {
+    var d = grunddaten();
+    var fall = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
+    fall.stationen.forEach(function (s) { s.aufgaben.forEach(function (a) { if (a.typ === 'merken') a.bedenkzeit = 0.3; }); });
+    d['faelle/demo'] = fall;
+    d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+    return d;
+  }
+  function gelesen(praefix) {
+    return (win().ATTRAPPE.gelesen || []).some(function (p) { return p.indexOf(praefix) === 0; });
   }
   function aufStart() {
     return warteAuf('Startseite', function () { return q('#nicht-ich'); });
@@ -352,6 +366,165 @@
       return aufStart().then(function () { pruefe(/Hallo, Mila!/.test(text('h1')), 'h1 ist „' + text('h1') + '“'); });
     }); })
 
+    // ---------- Akten (Etappe 3), mit dem Demo-Fall ----------
+    .then(function () { return test('Akte erscheint auf der Startseite, Lösung wird noch nicht geladen', function () {
+      return appLaden({ daten: mitDemo(), hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () { return warteAuf('Akte in der Liste', function () { return q('a.fenster--akte'); }); })
+        .then(function (a) {
+          pruefe(/Die verschwundene Muschel/.test(a.textContent), 'Titel fehlt: ' + a.textContent);
+          pruefe(a.getAttribute('href') === '#akte/demo', 'Link: ' + a.getAttribute('href'));
+          pruefe(!gelesen('loesungen/'), 'Lösung schon auf der Startseite geladen');
+          barrierefrei('Startseite mit Akte');
+        });
+    }); })
+
+    .then(function () { return test('Akte öffnen: Station 1, Uhr läuft, Weiter erst nach dem Prüfen', function () {
+      q('a.fenster--akte').click();
+      return warteAuf('Station 1', function () { return /Station 1/.test(text('h2')) && q('[data-pruefen]'); })
+        .then(function () {
+          pruefe(/Die verschwundene Muschel/.test(text('h1')), 'h1: ' + text('h1'));
+          pruefe(win().RA.uhr.laeuft() === 'demo', 'Uhr läuft nicht für die Akte');
+          pruefe(q('#weiter').disabled, 'Weiter ist schon vor dem Prüfen frei');
+          pruefe(q('[data-pruefen]').disabled, 'Prüfen ohne Auswahl möglich');
+          pruefe(q('[aria-current="step"]'), 'Stationsleiste ohne aria-current');
+          barrierefrei('Akte Station 1');
+          pruefe(!gelesen('loesungen/'), 'Lösung vor dem Prüfen geladen');
+          q('.option[data-wert="B"]').click();
+          q('[data-pruefen]').click();
+          return warteAuf('Rückmeldung', function () { var r = q('.rueckmeldung'); return r && !r.hidden && r; });
+        })
+        .then(function (r) {
+          pruefe(gelesen('loesungen/demo'), 'Lösung wurde nicht aus loesungen/demo geladen');
+          pruefe(/Nicht ganz/.test(r.textContent) && /Detektivfrage/.test(r.textContent), 'Rückmeldung: ' + r.textContent);
+          pruefe(doc().activeElement === r, 'Fokus nicht auf der Rückmeldung');
+          pruefe(/richtig/.test(q('.option[data-wert="A"]').textContent), 'richtige Antwort nicht als Text markiert');
+          pruefe(/nicht richtig/.test(q('.option[data-wert="B"]').textContent), 'falsche Wahl nicht als Text markiert');
+          pruefe(!q('#weiter').disabled, 'Weiter nach dem Prüfen gesperrt');
+        });
+    }); })
+
+    .then(function () { return test('Stationen: Springen nur bis zur erreichten Station', function () {
+      q('#weiter').click();
+      return warteAuf('Station 2', function () { return /Station 2/.test(text('h2')); })
+        .then(function () {
+          pruefe(win().RA.store.snapshot().eintraege.demo.station === 1, 'Station nicht gespeichert');
+          var alt = q('h2');
+          win().location.hash = 'akte/demo/5';
+          // auf die neu gezeichnete Station warten, nicht auf die alte
+          return warteAuf('wieder Station 2', function () { return q('h2') !== alt && /Station 2/.test(text('h2')); });
+        })
+        .then(function () {
+          pruefe(qa('.stationen__punkt.ist-zu').length === 4, qa('.stationen__punkt.ist-zu').length + ' statt 4 gesperrte Stationen');
+        });
+    }); })
+
+    .then(function () { return test('Hilfekarte: echter Dialog, Fokus hinein und zurück', function () {
+      var k = q('#hilfe-oeffnen');
+      pruefe(k, 'Kein Hilfekarten-Knopf in Station 2');
+      k.click();
+      var d = q('#hilfe-dialog');
+      pruefe(d.open && d.contains(doc().activeElement), 'Dialog zu oder Fokus draußen');
+      pruefe(/Spuren/.test(d.textContent), 'Hilfetext fehlt');
+      q('#hilfe-zu').click();
+      return warteAuf('Fokus zurück', function () { return !d.open && doc().activeElement === k; });
+    }); })
+
+    .then(function () { return test('Zuordnen: Erklärung je Karte, Teilerfolg als „Fast“', function () {
+      var paare = qa('.paar');
+      pruefe(paare.length === 3, paare.length + ' statt 3 Karten');
+      pruefe(q('.paar audio') && q('.paar details'), 'Hörkarte ohne Ton oder ohne Text zum Mitlesen');
+      pruefe(q('.paar table th[scope="col"]'), 'Tabellenkarte ohne Spaltenköpfe');
+      paare.forEach(function (p) { p.querySelector('[data-wert="w"]').click(); });
+      q('[data-pruefen]').click();
+      return warteAuf('Rückmeldung', function () { var r = q('.rueckmeldung'); return r && !r.hidden && r; })
+        .then(function (r) {
+          pruefe(/Fast/.test(r.textContent) && /2 von 3/.test(r.textContent), 'Rückmeldung: ' + r.textContent);
+          pruefe(qa('.paar__erklaerung:not([hidden])').length === 3, 'Nicht jede Karte hat eine Erklärung');
+        });
+    }); })
+
+    .then(function () { return test('Merkfrage: Bedenkzeit, Musterlösung, Selbsteinschätzung', function () {
+      q('#weiter').click();
+      return warteAuf('Station 3', function () { return /Station 3/.test(text('h2')) && q('[data-muster]'); })
+        .then(function (m) {
+          pruefe(m.disabled, 'Musterlösung sofort sichtbar (Bedenkzeit fehlt)');
+          q('#a-3\\.1 .option[data-wert="A"]').click();
+          q('#a-3\\.1 [data-pruefen]').click();
+          return warteAuf('Musterlösung frei', function () { return !q('[data-muster]').disabled && q('[data-muster]'); }, 3000);
+        })
+        .then(function (m) {
+          pruefe(q('#weiter').disabled, 'Weiter frei, obwohl die Merkfrage offen ist');
+          m.click();
+          return warteAuf('Musterlösung', function () { var x = q('.muster'); return x && !x.hidden && q('[data-stufe]'); });
+        })
+        .then(function (b) {
+          pruefe(/Blumentopf/.test(text('.muster')), 'Musterlösung fehlt');
+          b.click();
+          pruefe(win().RA.store.snapshot().eintraege.demo.selbst['3.2'] === 0, 'Selbsteinschätzung nicht gespeichert');
+          pruefe(!q('#weiter').disabled, 'Weiter gesperrt, obwohl die Zusatzfrage freiwillig ist');
+          pruefe(q('.aufgabe--zusatz'), 'Zusatzfrage fehlt');
+        });
+    }); })
+
+    .then(function () { return test('Bis zum Ende: Stempel, Eintrag, Uhr aus, Felder für die Regeln', function () {
+      q('#weiter').click();
+      return warteAuf('Station 4', function () { return /Station 4/.test(text('h2')); })
+        .then(function () {
+          var p = qa('.paar');
+          p[0].querySelector('[data-wert="a"]').click();
+          p[1].querySelector('[data-wert="b"]').click();
+          q('[data-pruefen]').click();
+          return warteAuf('geprüft', function () { return !q('#weiter').disabled; });
+        })
+        .then(function () { q('#weiter').click(); return warteAuf('Station 5', function () { return q('[data-erledigt]'); }); })
+        .then(function (b) { b.click(); q('#weiter').click(); return warteAuf('Station 6', function () { return /Station 6/.test(text('h2')); }); })
+        .then(function () {
+          pruefe(q('#weiter').disabled, 'Abschließen ohne Eintrag möglich');
+          q('#a-6\\.1 .option').click();
+          q('#a-6\\.2 .option[data-wert="gut"]').click();
+          q('#weiter').click();
+          return warteAuf('Fall gelöst', function () { return /Fall gelöst/.test(text('h1')); });
+        })
+        .then(function () {
+          var s = win().RA.store.snapshot();
+          pruefe(s.stempel.demo && s.erledigt.demo, 'Stempel oder erledigt fehlt');
+          pruefe(s.eintraege.demo.eintrag['6.2'] === 'gut', 'Eintrag: ' + JSON.stringify(s.eintraege.demo));
+          pruefe(!win().RA.uhr.laeuft(), 'Uhr läuft nach dem Abschluss weiter');
+          barrierefrei('Fall gelöst');
+          return win().RA.cloud.schreiben();
+        })
+        .then(function () {
+          var d = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
+          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'];
+          var fremd = Object.keys(d).filter(function (k) { return erlaubt.indexOf(k) < 0; });
+          pruefe(!fremd.length, 'Felder, die die Regeln ablehnen würden: ' + fremd.join(', '));
+          pruefe(d.stempel.demo, 'Stempel nicht in der Datenbank');
+          q('a[href="#buch"]').click();
+          return warteAuf('Buch mit Titel', function () { return /Die verschwundene Muschel/.test(text('#stempel-platz')); });
+        });
+    }); })
+
+    .then(function () { return test('Lösung nicht erreichbar: Hinweis statt Absturz', function () {
+      var d = mitDemo();
+      delete d['loesungen/demo'];
+      return appLaden({ daten: d, hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () { win().location.hash = 'akte/demo'; return warteAuf('Station 1', function () { return q('[data-pruefen]'); }); })
+        .then(function () {
+          q('.option[data-wert="A"]').click();
+          q('[data-pruefen]').click();
+          return warteAuf('Fehlerhinweis', function () { var r = q('.rueckmeldung--fehler'); return r && !r.hidden && r; });
+        })
+        .then(function (r) {
+          pruefe(/Internet/.test(r.textContent), 'Meldung: ' + r.textContent);
+          pruefe(!q('[data-pruefen]').disabled, 'Prüfen bleibt gesperrt, kein zweiter Versuch möglich');
+          pruefe(q('#weiter').disabled, 'Weiter frei ohne Prüfung');
+          win().location.hash = '';
+          return aufStart();
+        });
+    }); })
+
     .then(function () { return test('„Ich bin nicht Mila“ meldet ab', function () {
       q('#nicht-ich').click();
       return aufAnmeldung().then(function () { barrierefrei('Anmeldung'); });
@@ -464,7 +637,11 @@
         })
         .then(function () {
           pruefe(win().ATTRAPPE.daten['kinder/abcd2345'].vorname === 'Ben', 'Ben nicht gespeichert');
-          pruefe(qa('tbody tr').length === 2, 'Mila doppelt oder fehlt: ' + qa('tbody tr').length + ' Zeilen');
+          var zeilen = qa('section[aria-labelledby="t-kinder"] tbody tr').length;
+          pruefe(zeilen === 2, 'Mila doppelt oder fehlt: ' + zeilen + ' Zeilen');
+          pruefe(win().ATTRAPPE.daten['kinder/test2345'].angelegt === Date.parse('2026-09-01T08:00:00'),
+            '„Detektiv seit“ von Mila wurde beim erneuten Freischalten überschrieben');
+          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'].angelegt > 0, 'Ben ohne „angelegt“');
         });
     }); })
 
@@ -487,6 +664,36 @@
       }).then(function () {
         return warteAuf('Liste neu', function () { return q('tbody') && !/Ben/.test(q('tbody').textContent); });
       });
+    }); })
+
+    .then(function () { return test('Akte hochladen: Prüfung hält Fehler auf, gültige Datei landet in faelle und loesungen', function () {
+      pruefe(q('#akte-hochladen'), 'Kein Knopf „Akte prüfen und hochladen“');
+      pruefe(/Noch keine Akten/.test(text('section[aria-labelledby="t-akten"] tbody')), 'Aktenliste nicht leer');
+      // Lösung versehentlich im sichtbaren Teil, und eine Lösung fehlt
+      var kaputt = JSON.parse(JSON.stringify({ id: 'demo', fall: window.DEMO_FALL.fall, loesung: window.DEMO_FALL.loesung }));
+      kaputt.fall.stationen[0].aufgaben[0].richtig = ['A'];
+      delete kaputt.loesung.aufgaben['2.1'];
+      q('#akte-json').value = JSON.stringify(kaputt);
+      q('#akte-hochladen').click();
+      return warteAuf('Fehlerliste', function () { var m = q('#akte-ergebnis .fehler'); return m && m.textContent; })
+        .then(function (t) {
+          pruefe(/nichts gespeichert/.test(t), 'Meldung: ' + t);
+          pruefe(/Lösungen gehören nur in/.test(t), 'Lösung im sichtbaren Teil nicht erkannt');
+          pruefe(/2\.1: Lösung/.test(t), 'fehlende Lösung 2.1 nicht erkannt');
+          pruefe(!win().ATTRAPPE.daten['faelle/demo'], 'Akte trotz Fehler gespeichert');
+          q('#akte-json').value = JSON.stringify({ id: 'demo', fall: window.DEMO_FALL.fall, loesung: window.DEMO_FALL.loesung });
+          q('#akte-hochladen').click();
+          return warteAuf('Akte in der Liste', function () {
+            return /Die verschwundene Muschel/.test(text('section[aria-labelledby="t-akten"] tbody'));
+          });
+        })
+        .then(function () {
+          var D = win().ATTRAPPE.daten;
+          pruefe(D['faelle/demo'] && D['faelle/demo'].aktiv === true, 'faelle/demo fehlt oder nicht sichtbar');
+          pruefe(D['loesungen/demo'] && D['loesungen/demo'].aufgaben['1.1'], 'loesungen/demo fehlt');
+          pruefe(JSON.stringify(D['faelle/demo']).indexOf('"richtig"') < 0, 'Lösung steckt in faelle/demo');
+          barrierefrei('Lehrerbereich mit Akten');
+        });
     }); })
 
     // ================= Rechtstexte =================

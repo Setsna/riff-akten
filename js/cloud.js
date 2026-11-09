@@ -56,9 +56,11 @@ window.RA = window.RA || {};
   function scanSpur() { return /[#&?]c=/.test(location.hash + location.search); }
 
   // Code aus der Adresszeile entfernen (Screenshots, Verlauf).
+  // Andere Wege wie #buch oder #akte/... bleiben stehen, damit ein
+  // Neuladen in derselben Ansicht landet.
   function adresseSaeubern() {
     try {
-      if (location.hash || location.search) history.replaceState(null, '', location.pathname);
+      if (scanSpur()) history.replaceState(null, '', location.pathname);
     } catch (e) {}
   }
 
@@ -284,7 +286,30 @@ window.RA = window.RA || {};
     if (document.visibilityState === 'hidden') schreiben();
   });
 
+  // ==========================================================
+  //  Lesen für die Akten (js/akten.js)
+  //  Firestore hält gelesene Dokumente im Gerätespeicher
+  //  (enablePersistence), deshalb klappt ein zweites Öffnen auch
+  //  ohne Netz.
+  // ==========================================================
+  function lesen(sammlung, id) {
+    if (!db) return Promise.reject(new Error('keine Datenbank'));
+    return db.collection(sammlung).doc(id).get().then(function (s) {
+      return s.exists ? s.data() : null;
+    });
+  }
+  function liste(sammlung) {
+    if (!db) return Promise.reject(new Error('keine Datenbank'));
+    return db.collection(sammlung).get().then(function (q) {
+      var raus = [];
+      q.forEach(function (s) { var d = s.data() || {}; d.id = s.id; raus.push(d); });
+      return raus;
+    });
+  }
+
   RA.cloud = {
+    lesen: lesen,
+    liste: liste,
     start: start,
     anmelden: anmelden,
     abmelden: abmelden,

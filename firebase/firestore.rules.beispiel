@@ -82,8 +82,24 @@ service cloud.firestore {
       allow write: if istLehrer();
     }
 
+    // ---------- Akten ----------
+    // Was die Kinder sehen (Geschichte, Hinweise, Aufgaben). Nur
+    // freigeschaltete Kinder und die Lehrkraft lesen, nur die Lehrkraft
+    // schreibt (Lehrerbereich: "Akte hochladen").
+    match /faelle/{id} {
+      allow read:  if istLehrer() || istKlassenmitglied();
+      allow write: if istLehrer();
+    }
+
+    // ---------- Lösungen ----------
+    // Getrennt von den Akten, damit sie nicht schon beim Öffnen einer
+    // Akte mitkommen. Die App lädt sie erst beim Tippen auf "Prüfen".
+    match /loesungen/{id} {
+      allow read:  if istLehrer() || istKlassenmitglied();
+      allow write: if istLehrer();
+    }
+
     // ---------- Alles Übrige ist gesperrt ----------
-    // Akten ("faelle") und Lösungen ("loesungen") kommen in Etappe 3 dazu.
     match /{document=**} {
       allow read, write: if false;
     }
