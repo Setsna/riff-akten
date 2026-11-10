@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=17" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=18" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).
@@ -135,6 +135,54 @@ window.RA = window.RA || {};
     document.getElementById('neu-laden').addEventListener('click', function () { location.reload(); });
   }
 
+  // ---------- Bereich für Erwachsene (Etappe 5b) ----------
+  // Aufklappbar unter den Akten. Die Hinweise je Akte kommen aus
+  // fall.lehrkraft (Kinder können sie lesen: keine Lösungen hinein).
+  function erwachseneHtml() {
+    return '<section class="erwachsene" aria-labelledby="t-erwachsene">' +
+      '<h2 id="t-erwachsene" class="erwachsene__titel">Für Erwachsene</h2>' +
+
+      '<details class="erwachsene__teil">' +
+        '<summary>Für Eltern und Lehrkräfte: So funktionieren die Riff-Akten</summary>' +
+        '<p>Die Riff-Akten sind eine Lernplattform für die Klassen 3 und 4. Die Kinder lösen kleine, harmlose Fälle: ' +
+          'Sie lesen eine Fallakte, lesen und hören Hinweise, ordnen sie und beantworten die Detektivfrage. ' +
+          'Das Detektiv-Thema ist die Verpackung. Im Mittelpunkt stehen genaues Lesen, Zuhören und Begründen ' +
+          '(Deutsch und Sachunterricht).</p>' +
+        '<h3>Aufbau einer Akte</h3>' +
+        '<p>Jede Akte hat sechs Stationen: Die Fallakte, Hinweise ordnen, Kontrolle, Neue Wörter, ' +
+          'Am Tisch (eine Aufgabe ohne Gerät, mit einem anderen Kind oder einem Erwachsenen) und Mein Eintrag. ' +
+          'Nach jeder Antwort erscheint eine Erklärung, auch wenn die Antwort richtig war. ' +
+          'So wird klar, warum etwas stimmt.</p>' +
+        '<h3>Ohne Punkte und ohne Wettbewerb</h3>' +
+        '<p>Es gibt keine Punkte, keinen Zeitdruck und keine Ranglisten. Für jede gelöste Akte gibt es einen Stempel ' +
+          'im Detektivbuch, nach allen Akten eine Urkunde zum Ausdrucken. Die Lernzeit zählt nur, solange eine Akte ' +
+          'offen und die Seite sichtbar ist.</p>' +
+        '<h3>So können Erwachsene helfen</h3>' +
+        '<ul>' +
+          '<li>Das Kind selbst lesen und hören lassen, die Lösung nicht verraten.</li>' +
+          '<li>Nachfragen: „Woran hast du das erkannt?“ oder „Welcher Hinweis passt nicht?“</li>' +
+          '<li>Bei vielen Stationen gibt es den Knopf „Hilfekarte“ mit einem Tipp.</li>' +
+          '<li>Bei „Am Tisch“ zuhören, wenn das Kind seinen Fall erklärt.</li>' +
+        '</ul>' +
+        '<h3>Daten</h3>' +
+        '<p>Gespeichert werden nur der Vorname, der Zugangscode und der Lernstand. ' +
+          'Mehr dazu steht unter <a href="datenschutz.html">Datenschutz</a>.</p>' +
+      '</details>' +
+
+      '<details class="erwachsene__teil">' +
+        '<summary>Für Lehrkräfte: Einsatz im Unterricht und Lehrplanbezug</summary>' +
+        '<p>Eine Akte passt gut in eine Unterrichtsstunde. Die Kinder arbeiten allein oder zu zweit am iPad; ' +
+          'die Station „Am Tisch“ braucht ein zweites Kind. Lösungen werden erst beim Prüfen geladen und stehen ' +
+          'nicht im Quelltext der Seite.</p>' +
+        '<p>Bezug: Thüringer Lehrplan für die Grundschule (2026), Deutsch bzw. Sachunterricht. ' +
+          'Seitenangaben beziehen sich auf die PDF-Seiten.</p>' +
+        '<div id="lehrkraft-akten" aria-live="polite"><p>Die Hinweise zu den Akten werden geladen …</p></div>' +
+        '<p>Kinder freischalten, Auswertung und Sicherung: im <a href="lehrer.html">Lehrerbereich</a> ' +
+          '(nur für Lehrkräfte mit Anmeldung).</p>' +
+      '</details>' +
+    '</section>';
+  }
+
   // ---------- Ansicht: Startseite ----------
   function startseite() {
     var k = RA.cloud.kind();
@@ -170,9 +218,11 @@ window.RA = window.RA || {};
             '<span class="fenster__text">Mein Detektivbuch</span>' +
           '</a>' +
         '</section>' +
+        erwachseneHtml() +
       '</main>'
     );
     if (RA.akten) RA.akten.listeFuellen(document.getElementById('akten-liste'));
+    if (RA.akten) RA.akten.lehrkraftFuellen(document.getElementById('lehrkraft-akten'));
     document.getElementById('nicht-ich').addEventListener('click', function () {
       this.disabled = true;
       if (RA.uhr) RA.uhr.stopp();

@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=17) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=18) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -732,3 +732,38 @@ a.knopf { text-decoration: none; }
 
 /* Urkunde (Etappe 5a) */
 .urkunde__stand { margin: 0.4em 0 0.8em; font-size: 1.1em; }
+
+/* Bereich für Erwachsene (Etappe 5b) */
+.erwachsene {
+  max-width: 760px; margin: calc(48 * var(--s)) auto 0; padding: 0 16px;
+  text-align: left;
+}
+.erwachsene__titel {
+  font-size: max(17px, calc(22 * var(--s))); color: var(--weiss);
+  width: fit-content; margin: 0 auto .5em; padding: .2em 1em; border-radius: 999px;
+  background: var(--nebel);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+}
+.erwachsene__teil {
+  margin-top: 12px; padding: .3em 1.1em; border-radius: 16px;
+  background: var(--sand); color: var(--navy);
+  font-size: max(16px, calc(19 * var(--s))); line-height: 1.5;
+}
+.erwachsene__teil summary {
+  display: flex; align-items: center; gap: .5em; min-height: 48px; cursor: pointer; font-weight: 700;
+  list-style: none;
+}
+.erwachsene__teil summary::-webkit-details-marker { display: none; }
+.erwachsene__teil summary::before {
+  content: '\25B8'; flex: none; transition: transform .2s var(--ease);
+}
+.erwachsene__teil[open] summary::before { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .erwachsene__teil summary::before { transition: none; } }
+.erwachsene__teil summary:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; border-radius: 8px; }
+.erwachsene__teil[open] { padding-bottom: 1em; }
+.erwachsene__teil h3 { font-size: 1.05em; margin: 1em 0 .3em; }
+.erwachsene__teil p + p { margin-top: .6em; }
+.erwachsene__teil ul { margin: .3em 0 .6em 1.3em; list-style: disc; }
+.erwachsene__teil a { color: var(--navy); text-decoration: underline; }
+.lehrkraft__akte { margin-top: 1em; padding-top: .6em; border-top: 2px solid var(--sand-rand); }
+.lehrkraft__steck { font-size: .92em; }

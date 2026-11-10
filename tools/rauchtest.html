@@ -566,6 +566,22 @@
         });
     }); })
 
+    .then(function () { return test('Startseite: Bereich für Erwachsene mit Hinweisen je Akte', function () {
+      return appLaden({ daten: mitDemo(), hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () { return warteAuf('Hinweise je Akte', function () { return q('#lehrkraft-akten .lehrkraft__akte'); }); })
+        .then(function () {
+          pruefe(/Für Erwachsene/.test(text('#t-erwachsene')), 'h2 „Für Erwachsene“ fehlt');
+          pruefe(qa('details.erwachsene__teil').length === 2, qa('details.erwachsene__teil').length + ' statt 2 Aufklappbereiche');
+          pruefe(!q('details.erwachsene__teil').open, 'Bereich ist von Anfang an offen');
+          var lk = text('#lehrkraft-akten');
+          pruefe(/Die verschwundene Muschel/.test(lk) && /etwa 15 Minuten/.test(lk) && /PDF S\. 0/.test(lk), 'Hinweise: ' + lk);
+          pruefe(/Schwierigkeit: leicht/.test(lk), 'Schwierigkeit fehlt');
+          pruefe(!gelesen('loesungen'), 'Startseite lädt Lösungen');
+          barrierefrei('Startseite mit Bereich für Erwachsene');
+        });
+    }); })
+
     .then(function () { return test('Ausgeblendete Akte: nicht in der Liste, auch nicht über den direkten Link', function () {
       var d = mitDemo();
       d['faelle/demo'].aktiv = false;
@@ -987,6 +1003,11 @@
           var f = win().RA.fallPruefen(dl.daten);
           pruefe(!f.length, 'Heruntergeladene Akte besteht die Prüfung nicht: ' + f.join(' | '));
           pruefe(dl.daten.loesung.aufgaben['1.1'], 'Lösung fehlt in der Datei');
+          var kaputt = JSON.parse(JSON.stringify(dl.daten));
+          kaputt.fall.lehrkraft = { dauer: 15, lehrplan: 'kein Liste', quatsch: 1 };
+          var fk = win().RA.fallPruefen(kaputt).join(' | ');
+          pruefe(/dauer muss Text/.test(fk) && /lehrplan muss eine Liste/.test(fk) && /quatsch ist unbekannt/.test(fk), 'Prüfung lehrkraft: ' + fk);
+          pruefe(dl.daten.fall.lehrkraft && dl.daten.fall.lehrkraft.dauer, 'lehrkraft fehlt in der heruntergeladenen Akte');
           q('[data-akte-loeschen="demo"]').click();
           pruefe(q('#dialog').open && /Stempel und Lernzeit/.test(text('#dialog-text')), 'Rückfrage fehlt');
           q('#dialog-ja').click();

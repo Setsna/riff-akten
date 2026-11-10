@@ -32,6 +32,12 @@ window.DEMO_FALL = {
     klasse: 3,
     fach: 'Deutsch',
     schwierigkeit: 1,
+    lehrkraft: {
+      dauer: 'etwa 15 Minuten',
+      lehrplan: ['Nur ein Testfall für den Rauchtest [PDF S. 0]'],
+      material: 'nichts',
+      hinweise: ['Testhinweis']
+    },
     geschichte: [
       { absatz: 'Es ist Montag in der Riff-Schule.' },
       { absatz: 'Auf dem Lehrertisch lag eine rosa Muschel. Jetzt ist sie weg!' },

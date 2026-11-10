@@ -109,6 +109,24 @@ window.RA = window.RA || {};
       });
     });
     Object.keys(l.aufgaben).forEach(function (k) { if (!ids[k]) fehler('Lösung für unbekannte Aufgabe ' + k + '.'); });
+    // Hinweise für Lehrkräfte (freiwillig). Die Kinder können sie lesen.
+    if (fall.lehrkraft !== undefined) {
+      var lk = fall.lehrkraft;
+      if (!lk || typeof lk !== 'object' || Array.isArray(lk)) fehler('fall.lehrkraft muss ein Objekt sein.');
+      else {
+        Object.keys(lk).forEach(function (k) {
+          if (['dauer', 'material', 'lehrplan', 'hinweise'].indexOf(k) < 0) fehler('fall.lehrkraft.' + k + ' ist unbekannt (erlaubt: dauer, material, lehrplan, hinweise).');
+        });
+        ['dauer', 'material'].forEach(function (k) {
+          if (lk[k] !== undefined && typeof lk[k] !== 'string') fehler('fall.lehrkraft.' + k + ' muss Text sein.');
+        });
+        ['lehrplan', 'hinweise'].forEach(function (k) {
+          if (lk[k] !== undefined && (!Array.isArray(lk[k]) || lk[k].some(function (z) { return typeof z !== 'string'; }))) {
+            fehler('fall.lehrkraft.' + k + ' muss eine Liste aus Texten sein.');
+          }
+        });
+      }
+    }
     return f;
   }
 

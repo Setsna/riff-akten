@@ -90,7 +90,7 @@ window.RA = window.RA || {};
       ul.innerHTML = l.map(function (f) {
         var geloest = !!s.stempel[f.id];
         return '<li><a class="fenster fenster--akte' + (geloest ? ' ist-geloest' : '') + '" href="#akte/' + esc(f.id) + '">' +
-          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=17" alt="" width="480" height="480">'
+          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=18" alt="" width="480" height="480">'
                   : '<span class="fenster__ohnebild">' + LUPE + '</span>') +
           '<span class="fenster__unten">' +
             '<span class="fenster__nr">Akte ' + esc(f.nr || '') + '</span>' +
@@ -101,6 +101,33 @@ window.RA = window.RA || {};
       }).join('') + bald();
     }, function () {
       // Ohne Netz und ohne Zwischenspeicher: Platzhalter bleibt stehen
+    });
+  }
+
+  // Hinweise für Lehrkräfte je Akte (Startseite, Bereich für Erwachsene)
+  var SCHWIERIG = { 1: 'leicht', 2: 'mittel', 3: 'schwer' };
+  function lehrkraftFuellen(el) {
+    if (!el) return;
+    liste().then(function (l) {
+      if (!el.isConnected) return;
+      if (!l.length) { el.innerHTML = '<p>Noch keine Akten freigegeben.</p>'; return; }
+      el.innerHTML = l.map(function (f) {
+        var lk = f.lehrkraft || {};
+        var steck = [f.fach, f.klasse ? 'Klasse ' + f.klasse : '', SCHWIERIG[f.schwierigkeit] ? 'Schwierigkeit: ' + SCHWIERIG[f.schwierigkeit] : '',
+          lk.dauer ? 'Dauer: ' + lk.dauer : ''].filter(Boolean).map(esc).join(' · ');
+        return '<div class="lehrkraft__akte">' +
+          '<h3>Akte ' + esc(f.nr || '') + ': ' + esc(f.titel) + '</h3>' +
+          (steck ? '<p class="lehrkraft__steck">' + steck + '</p>' : '') +
+          (lk.lehrplan && lk.lehrplan.length
+            ? '<p><b>Lehrplanbezug</b></p><ul>' + lk.lehrplan.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul>' : '') +
+          (lk.material ? '<p><b>Material für „Am Tisch“:</b> ' + esc(lk.material) + '</p>' : '') +
+          (lk.hinweise && lk.hinweise.length
+            ? '<p><b>Hinweise</b></p><ul>' + lk.hinweise.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul>' : '') +
+          (f.lehrkraft ? '' : '<p>Hinweise zu dieser Akte folgen.</p>') +
+        '</div>';
+      }).join('');
+    }, function () {
+      if (el.isConnected) el.innerHTML = '<p>Die Hinweise laden gerade nicht.</p>';
     });
   }
 
@@ -119,7 +146,7 @@ window.RA = window.RA || {};
         }).join('') + '</tbody></table>';
     }
     if (k.audio) {
-      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=17"></audio>' +
+      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=18"></audio>' +
         (k.text ? '<details class="karte__mitlesen"><summary>Text zum Mitlesen</summary>' + absaetze(k.text) + '</details>' : '');
     } else if (k.text) {
       inhalt += absaetze(k.text);
@@ -133,7 +160,7 @@ window.RA = window.RA || {};
     return '<div class="akte__geschichte">' + (fall.geschichte || []).map(function (b) {
       if (b.liste) return '<ul>' + b.liste.map(function (p) { return '<li>' + txt(p) + '</li>'; }).join('') + '</ul>';
       if (b.bild) {
-        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=17" alt="' + esc(b.alt || '') + '" ' +
+        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=18" alt="' + esc(b.alt || '') + '" ' +
           'width="960" height="640" loading="lazy"></figure>';
       }
       return '<p>' + txt(b.absatz) + '</p>';
@@ -536,6 +563,7 @@ window.RA = window.RA || {};
   RA.akten = {
     liste: liste,
     listeFuellen: listeFuellen,
+    lehrkraftFuellen: lehrkraftFuellen,
     zeigen: zeigen,
     titel: titel,
     // für den Rauchtest
