@@ -73,7 +73,8 @@ window.RA = window.RA || {};
 
   // ---------- Ansicht: Anmelden ----------
   function anmelden(meldung) {
-    zeigen(kopf() +
+    // Zugang für die Lehrkraft: klein und dunkel wie die Fußzeile, damit er Kinder nicht anlockt
+    zeigen(kopf('<a class="lehrkraft-link" href="lehrer.html">Für Lehrkräfte</a>') +
       '<main class="inhalt">' +
         '<h1 class="frage">Wer ermittelt heute?</h1>' +
         '<p class="hinweis">Scanne den QR-Code auf deinem Aufkleber.<br>Oder tippe deinen Code ein.</p>' +

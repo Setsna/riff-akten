@@ -754,6 +754,17 @@ a.knopf { text-decoration: none; }
   -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
 }
 
+/* Lehrkraft-Zugang auf der Anmeldeseite: oben rechts, klein wie die Fußzeile */
+.lehrkraft-link {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px;
+  font-size: max(14px, calc(16 * var(--s)));
+  color: var(--weiss); border-radius: 999px; text-decoration: none;
+  background: var(--nebel);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+}
+.lehrkraft-link:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+
 /* ---------- Querformat: Klaro neben die Akten, ohne Scrollen ---------- */
 @media (orientation: landscape) and (min-width: 820px) {
   .kopf { --kopf-oben: calc(64 * var(--s)); }
