@@ -48,6 +48,10 @@ RA.config = {
     { id: 'kugelfisch', name: 'Kugelfisch' }
   ],
 
+  // Merkfrage: so viele Sekunden warten, bis die Musterlösung kommt.
+  // Steht in einer Akte mehr (z. B. 15), gilt trotzdem höchstens dieser Wert.
+  bedenkzeitMax: 10,
+
   // Lernzeit: ein einzelnes Stück zählt höchstens so lange (Sekunden).
   // Bleibt ein iPad offen liegen, läuft die Uhr sonst ewig weiter.
   lernzeitMaxStueck: 1800

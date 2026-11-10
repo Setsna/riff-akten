@@ -65,7 +65,7 @@ window.DEMO_FALL = {
       { id: 'kontrolle', titel: 'Kontrolle', hilfe: true, zeige: ['karten'], aufgaben: [
         { typ: 'auswahl', id: '3.1', frage: 'Wo ist die Muschel?',
           optionen: [{ id: 'A', text: 'Im Blumentopf am Fenster' }, { id: 'B', text: 'Bei den Jacken' }] },
-        { typ: 'merken', id: '3.2', frage: 'Warum ist die Muschel im Blumentopf?', bedenkzeit: 15 },
+        { typ: 'merken', id: '3.2', frage: 'Warum ist die Muschel im Blumentopf?', bedenkzeit: 10 },
         { typ: 'auswahl', id: '3.3', zusatz: true, mehrere: true, frage: 'Welche Spuren passen zum Fenster? (Mehrere sind richtig.)',
           optionen: [{ id: 'A', text: 'der nasse Fleck' }, { id: 'B', text: 'die Möwe' }, { id: 'C', text: 'die Jacken' }] }
       ] },
