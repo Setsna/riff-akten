@@ -50,34 +50,6 @@ Akten sind **Daten, kein Code**. Eine neue Akte braucht keine Programmänderung.
 | `tools/test/demo-fall.js` | Erfundene Übungsakte nur für Vorschau und Rauchtest |
 | `tools/qr_aufkleber.py` | Druckbogen mit QR-Aufklebern, `zugangscodes.csv` und `kinder.json` |
 
-## Vorschau und Rauchtest
-
-```
-powershell -ExecutionPolicy Bypass -File tools\server.ps1 -Port 8124
-```
-
-Dann `http://localhost:8124/tools/vorschau.html` oder `http://localhost:8124/tools/rauchtest.html`.
-Der Seitentitel des Rauchtests beginnt mit OK oder FEHLER.
-
-## Kinder freischalten
-
-1. Vornamen in eine Textdatei schreiben, einer pro Zeile.
-2. `py repo\tools\qr_aufkleber.py --namen Dateien\namen.txt` (aus dem Projektordner).
-   Die Ausgabe landet in `Dateien\Zugangscodes\`, nie im Repository.
-3. Im Lehrerbereich unter „Kinder freischalten“ die Datei `kinder.json` wählen.
-4. `aufkleber.pdf` drucken und ausschneiden.
-
-## Neue Akte hinzufügen
-
-1. Akte als JSON-Datei schreiben (`{ id, fall, loesung }`), lokal außerhalb des Repositorys.
-2. Mit `node tools/fall_pruefen.js akte.json` prüfen.
-3. Bilder als `bilder/akten/<id>-*.webp` und Hörkarten als `audio/<id>-*.m4a` ins Repository legen.
-4. Im Lehrerbereich unter „Akten“ die JSON-Datei hochladen. Der Fall landet in `faelle/<id>`,
-   die Lösung in `loesungen/<id>`.
-
-**Lösungen gehören nie ins Repository.** Die Seite ist öffentlich, die Kinder könnten sonst im
-Quelltext nachsehen. Die App lädt die Lösung erst beim Prüfen aus Firestore.
-
 ## Nach einer Änderung: Versionsnummer hochzählen
 
 Hinter jeder lokalen `js`- und `css`-Datei steht `?v=N`. Wer etwas ändert, zählt die Zahl überall
