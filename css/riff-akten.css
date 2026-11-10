@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=18) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=19) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -592,8 +592,9 @@ a.knopf { text-decoration: none; }
 .akte__hilfe .knopf--leise { border: 2px solid var(--navy); background: var(--weiss); }
 
 /* Hinweiskarten */
-.karten { display: grid; gap: 12px; }
+.karten { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .karte {
+  min-width: 0; max-width: 100%; overflow-x: auto;   /* sehr breite Tabelle: scrollt in der Karte */
   padding: .8em 1em; border-radius: 16px;
   background: var(--weiss); border: 2px solid rgba(11, 49, 85, 0.25);
 }
@@ -605,8 +606,11 @@ a.knopf { text-decoration: none; }
 .karte__ton { width: 100%; margin-top: .3em; }
 .karte__mitlesen { margin-top: .4em; }
 .karte__mitlesen summary { cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; text-decoration: underline; }
-.karte__tabelle { border-collapse: collapse; margin-top: .2em; }
-.karte__tabelle th, .karte__tabelle td { padding: .3em .8em; border: 1px solid rgba(11, 49, 85, 0.35); text-align: left; }
+.karte__tabelle { border-collapse: collapse; margin-top: .2em; width: 100%; }
+.karte__tabelle th, .karte__tabelle td {
+  padding: .3em .6em; border: 1px solid rgba(11, 49, 85, 0.35); text-align: left;
+  overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto;
+}
 .karte__tabelle th { background: #e4f3f5; }
 
 /* Aufgaben */
@@ -635,7 +639,9 @@ a.knopf { text-decoration: none; }
 .option:focus-visible, .akte__nachlesen summary:focus-visible, .karte__mitlesen summary:focus-visible { outline-color: var(--navy); }
 .station .knopf:focus-visible { outline-color: var(--navy); }
 .aufgabe__pruefen { margin-top: 14px; border: 2px solid var(--navy); }
-.paare { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.paare { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+/* Rasterzellen nicht breiter als die Station, auch wenn eine Tabelle darin steckt (Safari) */
+.paare > li, .karten > * { min-width: 0; }
 .paar__wort { font-weight: 700; font-size: 1.05em; }
 .paar__erklaerung { margin-top: 8px; padding: .4em .8em; border-radius: 12px; background: #e4f3f5; }
 .rueckmeldung { margin-top: 14px; padding: .8em 1em; border-radius: 16px; }
