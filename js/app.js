@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=19" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=20" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).
@@ -140,7 +140,7 @@ window.RA = window.RA || {};
   // fall.lehrkraft (Kinder können sie lesen: keine Lösungen hinein).
   function erwachseneHtml() {
     return '<section class="erwachsene" aria-labelledby="t-erwachsene">' +
-      '<h2 id="t-erwachsene" class="erwachsene__titel">Für Erwachsene</h2>' +
+      '<h2 id="t-erwachsene" class="unsichtbar">Für Erwachsene</h2>' +
 
       '<details class="erwachsene__teil">' +
         '<summary>Für Eltern und Lehrkräfte: So funktionieren die Riff-Akten</summary>' +
