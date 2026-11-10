@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=16) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=17) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -729,3 +729,6 @@ a.knopf { text-decoration: none; }
   .knopf, .knopf__pfeil, .wer__knopf { transition: none; }
   .fenster--buch:active, .knopf:active { transform: none; }
 }
+
+/* Urkunde (Etappe 5a) */
+.urkunde__stand { margin: 0.4em 0 0.8em; font-size: 1.1em; }

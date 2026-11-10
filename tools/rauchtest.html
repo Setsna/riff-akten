@@ -279,7 +279,7 @@
           var t = doc().body.textContent;
           pruefe(/Mila/.test(text('.ausweis__name')), 'Vorname fehlt auf dem Ausweis');
           pruefe(!/TEST-?2345/i.test(t), 'Zugangscode steht auf der Seite');
-          pruefe(qa('main h2').length === 3, qa('main h2').length + ' statt 3 h2 (Ausweis, Stempel, Lernzeit)');
+          pruefe(qa('main h2').length === 4, qa('main h2').length + ' statt 4 h2 (Ausweis, Stempel, Lernzeit, Urkunde)');
         });
     }); })
 
@@ -493,6 +493,9 @@
           pruefe(s.stempel.demo && s.erledigt.demo, 'Stempel oder erledigt fehlt');
           pruefe(s.eintraege.demo.eintrag['6.2'] === 'gut', 'Eintrag: ' + JSON.stringify(s.eintraege.demo));
           pruefe(!win().RA.uhr.laeuft(), 'Uhr läuft nach dem Abschluss weiter');
+          return warteAuf('Urkunde-Hinweis', function () { var h = q('#urkunde-hinweis'); return h && !h.hidden; });
+        })
+        .then(function () {
           barrierefrei('Fall gelöst');
           return win().RA.cloud.schreiben();
         })
@@ -504,6 +507,42 @@
           pruefe(d.stempel.demo, 'Stempel nicht in der Datenbank');
           q('a[href="#buch"]').click();
           return warteAuf('Buch mit Titel', function () { return /Die verschwundene Muschel/.test(text('#stempel-platz')); });
+        });
+    }); })
+
+    .then(function () { return test('Urkunde: erst wenn alle Akten gelöst, A4-PDF mit allen Akten', function () {
+      var w = win();
+      return warteAuf('Urkunde-Knopf', function () { return q('#urkunde-pdf'); })
+        .then(function () {
+          pruefe(/alle Akten gelöst/.test(text('#urkunde-platz')), 'Text: ' + text('#urkunde-platz'));
+          var s = w.RA.store.snapshot();
+          var nichtFertig = [{ id: 'demo', titel: 'Demo' }, { id: 'zwei', titel: 'Zweite Akte' }];
+          pruefe(!w.RA.buch.urkundeBereit(s, nichtFertig), 'Urkunde schon bei 1 von 2 Akten');
+          pruefe(!w.RA.buch.urkundeBereit(s, []), 'Urkunde ohne Akten');
+          return w.RA.buch._urkundeSeite(w.RA.cloud.kind(), s, [{ id: 'demo', titel: 'Die verschwundene Muschel' }]);
+        })
+        .then(function (c) {
+          pruefe(c.width === 1240 && c.height === 1754, 'Canvas ' + c.width + 'x' + c.height);
+          q('#urkunde-pdf').click();
+          return warteAuf('PDF-Link', function () { var z = q('#urkunde-zeile'); return z && !z.hidden && q('#urkunde-link').href; });
+        })
+        .then(function () {
+          pruefe(/^blob:/.test(q('#urkunde-link').href), 'Link ist kein blob');
+          pruefe(/Urkunde-Mila\.pdf/.test(q('#urkunde-link').download), 'Dateiname: ' + q('#urkunde-link').download);
+          pruefe(doc().activeElement === q('#urkunde-link'), 'Fokus nicht auf dem PDF-Link');
+          barrierefrei('Detektivbuch mit Urkunde');
+        });
+    }); })
+
+    .then(function () { return test('Urkunde: noch nicht alles gelöst, Stand wird angezeigt', function () {
+      var d = mitDemo();
+      return appLaden({ daten: d, hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () { win().location.hash = 'buch'; return warteAuf('Stand', function () { return /0 von 1/.test(text('#urkunde-platz')); }); })
+        .then(function () {
+          pruefe(!q('#urkunde-pdf'), 'Urkunde-Knopf ohne gelöste Akte');
+          win().location.hash = '';
+          return aufStart();
         });
     }); })
 

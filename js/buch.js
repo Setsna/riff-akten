@@ -1,7 +1,8 @@
 /* ==========================================================
    Riff-Akten – Detektivbuch (Etappe 2)
 
-   Ausweis mit Abzeichen, Stempelseite, Lernzeit. Dazu die
+   Ausweis mit Abzeichen, Stempelseite, Lernzeit, Urkunde (Etappe 5a:
+   erst, wenn alle sichtbaren Akten gelöst sind). Dazu die
    Lernzeit-Uhr (RA.uhr), die ab Etappe 3 beim Öffnen einer Akte
    läuft, und der Ausweis als PDF.
 
@@ -19,7 +20,7 @@ window.RA = window.RA || {};
   'use strict';
 
   var C = RA.config;
-  var V = '?v=16';
+  var V = '?v=17';
 
   function abzeichenDaten(id) {
     for (var i = 0; i < C.abzeichen.length; i++) if (C.abzeichen[i].id === id) return C.abzeichen[i];
@@ -148,6 +149,43 @@ window.RA = window.RA || {};
       }).join('') + '</ul>';
   }
 
+  // Urkunde: erst, wenn alle sichtbaren Akten gelöst sind.
+  // akten = Liste aus RA.akten.liste(), null = lädt noch, false = Fehler
+  function geloesteAkten(s, akten) {
+    return akten.filter(function (a) { return s.stempel && s.stempel[a.id]; });
+  }
+  function urkundeBereit(s, akten) {
+    return !!(akten && akten.length && geloesteAkten(s, akten).length === akten.length);
+  }
+  function urkundeHtml(s, akten) {
+    if (akten === null) return '<p class="buch__leer">Einen Moment …</p>';
+    if (akten === false) return '<p class="buch__leer">Die Akten laden gerade nicht. Versuche es später noch einmal.</p>';
+    if (!akten.length) return '<p class="buch__leer">Noch keine Akten da.</p>';
+    var n = geloesteAkten(s, akten).length;
+    if (n < akten.length) {
+      return '<p class="buch__leer">Löse alle Akten, dann bekommst du hier deine Urkunde.</p>' +
+        '<p class="urkunde__stand">Geschafft: <b>' + n + ' von ' + akten.length + '</b> Akten</p>';
+    }
+    return '<p class="urkunde__stand">Du hast alle ' + (akten.length === 1 ? 'Akten' : akten.length + ' Akten') +
+        ' gelöst. Hier ist deine Urkunde!</p>' +
+      '<div class="buch__knoepfe">' +
+        '<button type="button" class="knopf" id="urkunde-pdf">Urkunde zum Ausdrucken</button>' +
+      '</div>' +
+      '<p class="buch__pdf" id="urkunde-zeile" hidden>' +
+        '<a class="knopf" id="urkunde-link" download>PDF öffnen</a></p>';
+  }
+  function urkundeBinden(akten) {
+    var b = document.getElementById('urkunde-pdf');
+    if (!b) return;
+    b.addEventListener('click', function () {
+      pdfMachen(b, {
+        seite: function () { return urkundeSeite(RA.cloud.kind(), RA.store.snapshot(), akten); },
+        zeile: 'urkunde-zeile', link: 'urkunde-link', name: 'Urkunde',
+        fertig: 'Deine Urkunde ist fertig. Tippe auf PDF öffnen.'
+      });
+    });
+  }
+
   function zeigen() {
     var k = RA.cloud.kind();
     var s = RA.store.snapshot();
@@ -180,6 +218,11 @@ window.RA = window.RA || {};
           '<h2 id="t-zeit" class="buch__titel">Meine Lernzeit</h2>' +
           '<div id="zeit-platz">' + lernzeitHtml(s) + '</div>' +
         '</section>' +
+
+        '<section class="buch__teil" aria-labelledby="t-urkunde">' +
+          '<h2 id="t-urkunde" class="buch__titel">Meine Urkunde</h2>' +
+          '<div id="urkunde-platz">' + urkundeHtml(s, RA.akten ? null : false) + '</div>' +
+        '</section>' +
       '</main>' +
 
       dialogHtml(s)
@@ -189,18 +232,28 @@ window.RA = window.RA || {};
       dialogOeffnen(this);
     });
     document.getElementById('ausweis-pdf').addEventListener('click', function () {
-      pdfMachen(this);
+      pdfMachen(this, {
+        seite: function () { return ausweisSeite(RA.cloud.kind(), RA.store.snapshot()); },
+        zeile: 'pdf-zeile', link: 'pdf-link', name: 'Detektivausweis',
+        fertig: 'Dein Ausweis ist fertig. Tippe auf PDF öffnen.'
+      });
     });
 
-    // Titel der Akten nachladen (nach einem Neuladen direkt im Buch)
-    if (RA.akten && (Object.keys(s.stempel || {}).length || Object.keys(s.zeit || {}).length)) {
-      RA.akten.liste().then(function () {
-        var sp = document.getElementById('stempel-platz'), zp = document.getElementById('zeit-platz');
-        if (!sp || !zp) return;
+    // Akten nachladen: Titel für Stempel und Lernzeit, Stand der Urkunde
+    if (RA.akten) {
+      RA.akten.liste().then(function (akten) {
+        var sp = document.getElementById('stempel-platz'), zp = document.getElementById('zeit-platz'),
+            up = document.getElementById('urkunde-platz');
+        if (!sp || !zp || !up) return;
         var neu = RA.store.snapshot();
         sp.innerHTML = stempelHtml(neu);
         zp.innerHTML = lernzeitHtml(neu);
-      }, function () {});
+        up.innerHTML = urkundeHtml(neu, akten);
+        urkundeBinden(akten);
+      }, function () {
+        var up = document.getElementById('urkunde-platz');
+        if (up) up.innerHTML = urkundeHtml(s, false);
+      });
     }
   }
 
@@ -266,31 +319,34 @@ window.RA = window.RA || {};
   // ==========================================================
   // Ausweis als PDF
   // ==========================================================
-  var pdfAdresse = null;
-  function pdfZuruecksetzen() {
-    if (pdfAdresse) { URL.revokeObjectURL(pdfAdresse); pdfAdresse = null; }
-    var z = document.getElementById('pdf-zeile');
+  // Je PDF-Zeile eine eigene Adresse (Ausweis und Urkunde)
+  var pdfAdressen = {};
+  function pdfZuruecksetzen(zeile) {
+    zeile = zeile || 'pdf-zeile';
+    if (pdfAdressen[zeile]) { URL.revokeObjectURL(pdfAdressen[zeile]); pdfAdressen[zeile] = null; }
+    var z = document.getElementById(zeile);
     if (z) z.hidden = true;
   }
 
-  function pdfMachen(knopf) {
+  // opt: seite() -> Promise<canvas>, zeile, link, name, fertig (Ansage)
+  function pdfMachen(knopf, opt) {
     var alt = knopf.textContent;
     knopf.disabled = true;
     knopf.textContent = 'Einen Moment …';
-    pdfZuruecksetzen();
-    ausweisSeite(RA.cloud.kind(), RA.store.snapshot()).then(function (canvas) {
+    pdfZuruecksetzen(opt.zeile);
+    opt.seite().then(function (canvas) {
       var blob = pdfAusSeiten([canvas]);
-      pdfAdresse = URL.createObjectURL(blob);
-      var link = document.getElementById('pdf-link');
-      link.href = pdfAdresse;
-      link.download = 'Detektivausweis-' + String(RA.cloud.kind().vorname).replace(/[^\wäöüÄÖÜß-]+/g, '') + '.pdf';
-      document.getElementById('pdf-zeile').hidden = false;
+      pdfAdressen[opt.zeile] = URL.createObjectURL(blob);
+      var link = document.getElementById(opt.link);
+      link.href = pdfAdressen[opt.zeile];
+      link.download = opt.name + '-' + String(RA.cloud.kind().vorname).replace(/[^\wäöüÄÖÜß-]+/g, '') + '.pdf';
+      document.getElementById(opt.zeile).hidden = false;
       knopf.disabled = false;
       knopf.textContent = alt;
       link.focus();
-      RA.ui.ansagen('Dein Ausweis ist fertig. Tippe auf PDF öffnen.');
+      RA.ui.ansagen(opt.fertig);
     }, function (e) {
-      console.warn('Riff-Akten: Ausweis-PDF', e);
+      console.warn('Riff-Akten: PDF', e);
       knopf.disabled = false;
       knopf.textContent = alt;
       RA.ui.ansagen('Das hat nicht geklappt. Versuche es noch einmal.');
@@ -456,6 +512,109 @@ window.RA = window.RA || {};
     });
   }
 
+  // Urkunde: A4 hochkant. Name, Abzeichen, alle gelösten Akten mit Datum.
+  function urkundeSeite(k, s, akten) {
+    var a = abzeichenDaten(s.abzeichen);
+    var laden = [bild('bilder/klaro.webp' + V)];
+    if (a) laden.push(bild(abzeichenBild(a.id)));
+    var geloest = geloesteAkten(s, akten);
+    return schriften().then(function () { return Promise.all(laden); }).then(function (bilder) {
+      var klaro = bilder[0], abz = bilder[1];
+      var c = document.createElement('canvas');
+      c.width = B; c.height = H;
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, B, H);
+
+      // Rahmen: Fläche mit Verlauf, doppelte Linie
+      var r = 70, rw = B - 2 * r, rh = H - 2 * r;
+      ctx.save();
+      rund(ctx, r, r, rw, rh, 36);
+      ctx.clip();
+      var verlauf = ctx.createLinearGradient(0, r, 0, r + rh);
+      verlauf.addColorStop(0, LICHT);
+      verlauf.addColorStop(0.45, PAPIER);
+      verlauf.addColorStop(1, PAPIER);
+      ctx.fillStyle = verlauf;
+      ctx.fillRect(r, r, rw, rh);
+      ctx.restore();
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = NAVY;
+      rund(ctx, r, r, rw, rh, 36);
+      ctx.stroke();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = NAVY_WEICH;
+      rund(ctx, r + 26, r + 26, rw - 52, rh - 52, 22);
+      ctx.stroke();
+
+      var mx = B / 2, innen = rw - 200;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = '700 36px "Andika"';
+      ctx.fillStyle = NAVY_WEICH;
+      ctx.fillText('RIFF-AKTEN', mx, 220);
+      zeile(ctx, 'Urkunde', mx, 360, '400 #px "Libre Caslon Text"', 150, innen, NAVY);
+
+      // Abzeichen (oder Klaro, wenn keins gewählt ist)
+      var ad = 300, ay = 420;
+      if (abz) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(mx, ay + ad / 2, ad / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(abz, mx - ad / 2, ay, ad, ad);
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(mx, ay + ad / 2, ad / 2, 0, Math.PI * 2);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = NAVY;
+        ctx.stroke();
+      } else {
+        var kw0 = ad, kh0 = kw0 * klaro.height / klaro.width;
+        ctx.drawImage(klaro, mx - kw0 / 2, ay + (ad - kh0) / 2, kw0, kh0);
+      }
+
+      zeile(ctx, k.vorname, mx, 880, '400 #px "Libre Caslon Text"', 120, innen, NAVY);
+      ctx.font = '400 46px "Andika"';
+      ctx.fillStyle = NAVY;
+      ctx.fillText(geloest.length === 1 ? 'hat die Riff-Akte gelöst.' : 'hat alle ' + geloest.length + ' Riff-Akten gelöst.', mx, 960);
+      ctx.fillText('Super ermittelt!', mx, 1025);
+
+      // Liste der Akten mit Datum (wird bei vielen Akten kleiner)
+      var y = 1120, platz = 1460 - y;
+      var schritt = Math.min(64, Math.floor(platz / Math.max(geloest.length, 1)));
+      var gr = Math.max(26, Math.min(40, schritt - 18));
+      geloest.slice().sort(function (x, z) { return s.stempel[x.id] - s.stempel[z.id]; }).forEach(function (f) {
+        var t = new Date(s.stempel[f.id]).toLocaleDateString('de-DE');
+        zeile(ctx, '\u2713  ' + f.titel + '  \u2013  ' + t, mx, y + gr, '400 #px "Andika"', gr, innen, NAVY);
+        y += schritt;
+      });
+
+      // Datum und Unterschrift
+      var uy = 1560;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = NAVY_WEICH;
+      ctx.beginPath();
+      ctx.moveTo(190, uy); ctx.lineTo(530, uy);
+      ctx.moveTo(610, uy); ctx.lineTo(930, uy);
+      ctx.stroke();
+      ctx.font = '400 38px "Andika"';
+      ctx.fillStyle = NAVY;
+      ctx.fillText(datum(Date.now()), 360, uy - 18);
+      ctx.font = '700 26px "Andika"';
+      ctx.fillStyle = NAVY_WEICH;
+      ctx.fillText('DATUM', 360, uy + 40);
+      ctx.fillText('UNTERSCHRIFT', 770, uy + 40);
+
+      // Klaro klein unten rechts, wenn oben das Abzeichen steht
+      if (abz) {
+        var kw = 170, kh = kw * klaro.height / klaro.width;
+        ctx.drawImage(klaro, B - r - kw - 45, H - r - kh - 45, kw, kh);
+      }
+      return c;
+    });
+  }
+
   function jpegBytes(canvas) {
     var daten = atob(canvas.toDataURL('image/jpeg', 0.9).split(',')[1]);
     var b = new Uint8Array(daten.length);
@@ -504,6 +663,8 @@ window.RA = window.RA || {};
     dauer: dauer,
     // für den Rauchtest
     _ausweisSeite: ausweisSeite,
+    _urkundeSeite: urkundeSeite,
+    urkundeBereit: urkundeBereit,
     _pdfAusSeiten: pdfAusSeiten
   };
 })();
