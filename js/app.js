@@ -34,7 +34,7 @@ window.RA = window.RA || {};
   // Klaro, der Einsiedlerkrebs (Canva). Schmückend: Sein Name steht
   // immer im Text daneben, deshalb leeres alt.
   function klaro(klasse) {
-    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=20" alt="" width="600" height="542">';
+    return '<img class="klaro ' + (klasse || '') + '" src="bilder/klaro.webp?v=21" alt="" width="600" height="542">';
   }
 
   // Wortmarke oben mittig (kein h1: das h1 steht im Inhalt).

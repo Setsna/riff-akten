@@ -90,7 +90,7 @@ window.RA = window.RA || {};
       ul.innerHTML = l.map(function (f) {
         var geloest = !!s.stempel[f.id];
         return '<li><a class="fenster fenster--akte' + (geloest ? ' ist-geloest' : '') + '" href="#akte/' + esc(f.id) + '">' +
-          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=20" alt="" width="480" height="480">'
+          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=21" alt="" width="480" height="480">'
                   : '<span class="fenster__ohnebild">' + LUPE + '</span>') +
           '<span class="fenster__unten">' +
             '<span class="fenster__nr">Akte ' + esc(f.nr || '') + '</span>' +
@@ -146,7 +146,7 @@ window.RA = window.RA || {};
         }).join('') + '</tbody></table>';
     }
     if (k.audio) {
-      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=20"></audio>' +
+      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=21"></audio>' +
         (k.text ? '<details class="karte__mitlesen"><summary>Text zum Mitlesen</summary>' + absaetze(k.text) + '</details>' : '');
     } else if (k.text) {
       inhalt += absaetze(k.text);
@@ -160,7 +160,7 @@ window.RA = window.RA || {};
     return '<div class="akte__geschichte">' + (fall.geschichte || []).map(function (b) {
       if (b.liste) return '<ul>' + b.liste.map(function (p) { return '<li>' + txt(p) + '</li>'; }).join('') + '</ul>';
       if (b.bild) {
-        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=20" alt="' + esc(b.alt || '') + '" ' +
+        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=21" alt="' + esc(b.alt || '') + '" ' +
           'width="960" height="640" loading="lazy"></figure>';
       }
       return '<p>' + txt(b.absatz) + '</p>';
@@ -296,6 +296,39 @@ window.RA = window.RA || {};
   }
 
   // ==========================================================
+  // Reihenfolge mischen (Ingo, 2026-11-10): Sonst merken die Kinder
+  // Muster wie „immer B“ oder „Wort 1 zu Erklärung 1“. Fest je Kind,
+  // Akte und Aufgabe: nach dem Neuladen gleich, beim Nachbarkind anders.
+  // Nie die Reihenfolge aus der Datei und nie genau umgedreht (beides erkennbare Muster).
+  // ==========================================================
+  function streuwert(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function gemischt(liste, schluessel) {
+    var k = RA.cloud.kind && RA.cloud.kind();
+    var x = streuwert(schluessel + '|' + ((k && k.code) || ''));
+    function zufall() {            // mulberry32
+      x = (x + 0x6D2B79F5) >>> 0;
+      var z = x;
+      z = Math.imul(z ^ (z >>> 15), z | 1);
+      z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+      return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+    }
+    var m = liste.slice();
+    for (var i = m.length - 1; i > 0; i--) {
+      var j = Math.floor(zufall() * (i + 1));
+      var tmp = m[i]; m[i] = m[j]; m[j] = tmp;
+    }
+    // Wie in der Datei oder genau umgedreht? Beides ist ein Muster: um eins verschieben.
+    function gleich(b) { return b.every(function (v, n) { return v === m[n]; }); }
+    if (m.length > 2 && (gleich(liste) || gleich(liste.slice().reverse()))) m.push(m.shift());
+    else if (m.length === 2 && gleich(liste)) m.reverse();
+    return m;
+  }
+
+  // ==========================================================
   // Aufgaben
   // ==========================================================
   function aufgabeHtml(fall, a) {
@@ -304,19 +337,23 @@ window.RA = window.RA || {};
 
     if (a.typ === 'auswahl' || a.typ === 'eintrag') {
       inhalt = '<div class="optionen" role="group" aria-labelledby="f-' + esc(a.id) + '">' +
-        a.optionen.map(function (o) {
+        // Auswahl gemischt; „Mein Eintrag“ (leicht / genau richtig / schwer) bleibt in Reihenfolge
+        (a.typ === 'auswahl' ? gemischt(a.optionen, fall.id + '|' + a.id) : a.optionen).map(function (o) {
           return '<button type="button" class="option" data-wert="' + esc(optionId(o)) + '" aria-pressed="false">' +
             '<span class="option__text">' + txt(optionText(fall, o)) + '</span><span class="option__mark"></span></button>';
         }).join('') + '</div>' +
         (a.mehrere ? '<p class="aufgabe__tipp">Du kannst mehrere Antworten wählen.</p>' : '');
     } else if (a.typ === 'zuordnen') {
+      // Ziele mischen, wenn es mehr als zwei sind („hilft / überflüssig“ bleibt fest).
+      // Die Elemente bleiben in der Reihenfolge der Datei (Karten bauen aufeinander auf).
+      var ziele = a.ziele.length > 2 ? gemischt(a.ziele, fall.id + '|' + a.id) : a.ziele;
       inhalt = '<ul class="paare">' + a.elemente.map(function (el) {
         var eid = el.id || el.karte;
         var label = el.karte ? (karteVon(fall, el.karte) || {}).titel : el.text;
         return '<li class="paar" data-element="' + esc(eid) + '">' +
           (el.karte ? karteHtml(karteVon(fall, el.karte)) : '<p class="paar__wort">' + txt(el.text) + '</p>') +
           '<div class="optionen optionen--ziele" role="group" aria-label="' + esc(label) + '">' +
-            a.ziele.map(function (z) {
+            ziele.map(function (z) {
               return '<button type="button" class="option option--ziel" data-wert="' + esc(z.id) + '" aria-pressed="false">' +
                 '<span class="option__text">' + txt(z.text) + '</span><span class="option__mark"></span></button>';
             }).join('') +
@@ -563,6 +600,7 @@ window.RA = window.RA || {};
   RA.akten = {
     liste: liste,
     listeFuellen: listeFuellen,
+    _gemischt: gemischt,
     lehrkraftFuellen: lehrkraftFuellen,
     zeigen: zeigen,
     titel: titel,

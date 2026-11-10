@@ -392,6 +392,12 @@
           pruefe(bild && bild.getAttribute('alt'), 'Bild in der Geschichte fehlt oder hat keinen Alt-Text');
           barrierefrei('Akte Station 1');
           pruefe(!gelesen('loesungen/'), 'Lösung vor dem Prüfen geladen');
+          // Antworten gemischt, fest je Kind (nicht in Datei-Reihenfolge)
+          var reihe = qa('#a-1\\.1 .option').map(function (b) { return b.getAttribute('data-wert'); }).join('');
+          pruefe(reihe !== 'AB', 'Antworten stehen in Datei-Reihenfolge: ' + reihe);
+          var L = [1, 2, 3, 4, 5], m1 = win().RA.akten._gemischt(L, 'demo|x'), m2 = win().RA.akten._gemischt(L, 'demo|x');
+          pruefe(m1.join() === m2.join(), 'Mischung ist nicht fest');
+          pruefe(m1.slice().sort().join() === L.join() && m1.join() !== L.join(), 'Mischung kaputt: ' + m1.join());
           q('.option[data-wert="B"]').click();
           q('[data-pruefen]').click();
           return warteAuf('Rückmeldung', function () { var r = q('.rueckmeldung'); return r && !r.hidden && r; });
