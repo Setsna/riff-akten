@@ -506,7 +506,12 @@
       merk.map(function (a, i) {
         return '<th scope="col"><abbr title="' + esc(a.frage) + '">Merkfrage' + (merk.length > 1 ? ' ' + (i + 1) : '') + '</abbr></th>';
       }).join('') +
-      eintr.map(function (a) { return '<th scope="col">' + esc(a.frage) + '</th>'; }).join('') + '</tr>';
+      eintr.map(function (a, i) {
+        // Paket E: kurze Spaltenköpfe, voller Fragetext im title
+        var kurz = (a.optionen && a.optionen[0] && a.optionen[0].karte) ? 'Bester Hinweis'
+          : (/wie war/i.test(a.frage || '') ? 'Wie war der Fall?' : 'Eintrag ' + (i + 1));
+        return '<th scope="col"><abbr title="' + esc(a.frage) + '">' + kurz + '</abbr></th>';
+      }).join('') + '</tr>';
 
     return zusammen +
       '<div class="tabelle-rahmen"><table class="tabelle">' +

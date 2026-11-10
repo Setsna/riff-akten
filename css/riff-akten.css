@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=22) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=23) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -132,7 +132,10 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
 .kopf {
   position: relative;
   display: flex; flex-direction: column; align-items: center;
-  padding-top: calc(110 * var(--s));
+  /* Höhe des Kopfbereichs als Variable: Zurück- und Abmelde-Knopf sitzen immer
+     12 px unter dem oberen Rand, egal wie hoch der Kopf ist (Paket B/D) */
+  --kopf-oben: calc(110 * var(--s));
+  padding-top: var(--kopf-oben);
 }
 .wortmarke {
   font-family: var(--serif); font-size: calc(31 * var(--s)); line-height: 1.2;
@@ -268,18 +271,21 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
   align-self: stretch;
   display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: flex-end;
   margin: 0 calc(24 * var(--s)) calc(30 * var(--s));
-  margin-top: calc(-80 * var(--s));
+  margin-top: calc(12px - var(--kopf-oben));
   font-size: max(15px, calc(21 * var(--s)));
   color: var(--navy);
 }
 .wer__name { text-shadow: 0 0 8px rgba(228, 243, 245, 0.9); }
 .wer__knopf {
-  min-height: 48px; padding: 0 1em;
-  font: inherit; font-weight: 700; color: var(--navy);
-  background: rgba(255, 255, 255, 0.72);
-  border: 2px solid var(--glas-kante); border-radius: 999px;
+  /* Paket D: leiser Textlink statt auffälliger weißer Knopf (Kinder tippen sonst aus Neugier) */
+  min-height: 48px; padding: 0 .6em;
+  font: inherit; font-size: .9em; font-weight: 400; color: var(--navy);
+  background: transparent; border: 0; border-radius: 999px;
+  text-decoration: underline; text-underline-offset: .2em;
+  text-shadow: 0 0 8px rgba(228, 243, 245, 0.9);
   cursor: pointer;
 }
+.wer__knopf:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
 .wer__knopf:active { transform: scale(0.97); }
 
 /* ---------- Akten ---------- */
@@ -343,7 +349,7 @@ body.ruht .licht, body.ruht .blasen span { animation-play-state: paused; }
   align-self: flex-start;
   display: inline-flex; align-items: center; gap: .4em;
   min-height: 48px; padding: 0 1em;
-  margin: calc(-80 * var(--s)) calc(24 * var(--s)) calc(30 * var(--s));
+  margin: calc(12px - var(--kopf-oben)) calc(24 * var(--s)) calc(30 * var(--s));
   font-size: max(15px, calc(21 * var(--s))); font-weight: 700;
   color: var(--navy); text-decoration: none;
   background: rgba(255, 255, 255, 0.72);
@@ -514,7 +520,7 @@ a.knopf { text-decoration: none; }
 }
 /* Worum es geht (fall.thema), klein unter dem Titel */
 .fenster__thema {
-  font-size: max(13px, calc(16 * var(--s))); line-height: 1.25; opacity: .9;
+  font-size: max(14px, calc(19 * var(--s)));   /* Paket D: an der Tafel lesbar */ line-height: 1.25; opacity: .9;
   text-wrap: balance;
 }
 /* "gelöst" als Schild oben auf dem Bild */
@@ -522,7 +528,7 @@ a.knopf { text-decoration: none; }
   position: absolute; top: calc(18 * var(--s)); left: 50%; transform: translateX(-50%);
   padding: .15em .8em; border-radius: 999px;
   background: var(--weiss); color: var(--navy); font-weight: 700;
-  font-size: max(13px, calc(17 * var(--s)));
+  font-size: max(14px, calc(20 * var(--s)));
   box-shadow: 0 4px 10px -2px rgba(3, 20, 35, 0.45);
 }
 
@@ -540,7 +546,15 @@ a.knopf { text-decoration: none; }
 /* Lange Akten-Titel dürfen auf schmalen Geräten nicht überstehen */
 .akte .frage { font-size: min(calc(80 * var(--s)), 10.5vw); hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
 /* Stationsleiste: Nummern immer sichtbar, Namen ab Tabletbreite */
-.stationen { width: min(100%, 980px); margin-top: calc(34 * var(--s)); }
+.stationen { width: min(100%, max(980px, calc(1100 * var(--s)))); margin-top: calc(34 * var(--s)); }
+
+/* Kompakter Kopf ab Station 2 (Paket B): Wortmarke weg, Titel kleiner, weniger Luft */
+#app.ist-kompakt .kopf { --kopf-oben: calc(40 * var(--s)); }
+#app.ist-kompakt .wortmarke, #app.ist-kompakt .lupe { display: none; }
+#app.ist-kompakt .akte__nr { margin-top: calc(6 * var(--s)); font-size: max(13px, calc(16 * var(--s))); }
+#app.ist-kompakt .akte .frage { margin-top: calc(4 * var(--s)); font-size: min(calc(50 * var(--s)), 8vw); }
+#app.ist-kompakt .stationen { margin-top: calc(18 * var(--s)); }
+#app.ist-kompakt .station { margin-top: calc(18 * var(--s)); }
 .stationen ol {
   list-style: none; margin: 0; padding: 0;
   display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
@@ -559,6 +573,12 @@ a.knopf { text-decoration: none; }
   background: var(--navy); color: var(--weiss);
 }
 .stationen__punkt.ist-hier { background: var(--weiss); border-color: var(--navy); }
+.stationen__nr { position: relative; }
+.stationen__haken {
+  position: absolute; right: -.35em; bottom: -.3em; width: .95em; height: .95em; padding: .1em;
+  border-radius: 50%; background: #1e6b3a; box-shadow: 0 0 0 2px var(--weiss);
+  fill: none; stroke: var(--weiss); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+}
 .stationen__punkt.ist-zu { background: var(--nebel); color: var(--weiss); }
 .stationen__punkt.ist-zu .stationen__nr { background: rgba(255, 255, 255, 0.25); }
 @media (max-width: 900px) {
@@ -567,7 +587,8 @@ a.knopf { text-decoration: none; }
 
 /* Station: helles Papier, Navy-Schrift */
 .station {
-  width: min(100%, 860px);
+  /* wächst an der Tafel mit der Schrift mit (Paket B), sonst werden die Zeilen sehr kurz */
+  width: min(100%, max(860px, calc(980 * var(--s))));
   margin-top: calc(30 * var(--s));
   padding: calc(34 * var(--s)) calc(40 * var(--s)) calc(40 * var(--s));
   border-radius: calc(40 * var(--s));
@@ -583,18 +604,23 @@ a.knopf { text-decoration: none; }
 .akte__geschichte li + li { margin-top: .4em; }
 .akte__frage {
   margin-top: 1em; padding: .8em 1em;
-  border-left: 6px solid var(--navy); border-radius: 12px;
+  border: 2px solid rgba(11, 49, 85, 0.3); border-radius: 16px;
   background: #e4f3f5; font-weight: 700;
 }
 .akte__frage-titel { font-size: .8em; letter-spacing: .08em; text-transform: uppercase; color: #23557a; }
 .akte__nachlesen { margin-top: 1em; }
-.akte__nachlesen summary {
+/* Paket C: Hilfsmittel (Fallakte, Hinweise, Hilfekarte) als eine Zeile gleich aussehender Knöpfe */
+.station__werkzeuge { display: flex; flex-wrap: wrap; gap: 10px 12px; margin-top: 1em; }
+.station__werkzeuge .akte__nachlesen { margin-top: 0; }
+.station__werkzeuge .akte__nachlesen[open] { flex-basis: 100%; order: 1; }
+.akte__nachlesen summary, .werkzeug {
   display: inline-flex; align-items: center; min-height: 48px; padding: 0 1em;
   border-radius: 999px; border: 2px solid var(--navy); cursor: pointer; font-weight: 700;
+  background: var(--weiss); color: var(--navy); font: inherit; font-weight: 700;
 }
+.werkzeug:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
 .akte__nachlesen[open] summary { margin-bottom: .8em; }
-.akte__hilfe { margin-top: 1em; }
-.akte__hilfe .knopf--leise { border: 2px solid var(--navy); background: var(--weiss); }
+
 
 /* Hinweiskarten */
 .karten { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -625,25 +651,42 @@ a.knopf { text-decoration: none; }
 .optionen { display: flex; flex-direction: column; gap: 10px; }
 .optionen--ziele { flex-direction: row; flex-wrap: wrap; margin-top: 10px; }
 .option {
-  display: flex; align-items: center; justify-content: space-between; gap: .6em;
-  min-height: 52px; padding: .5em 1em;
+  display: flex; align-items: center; justify-content: space-between; gap: .6em; flex-wrap: wrap;
+  min-height: 56px; padding: .55em 1em;
   font: inherit; text-align: left; color: var(--navy);
-  background: var(--weiss); border: 3px solid rgba(11, 49, 85, 0.3); border-radius: 18px;
+  background: var(--weiss); border: 2px solid rgba(11, 49, 85, 0.35); border-radius: 18px;
+  box-shadow: 0 3px 8px -3px rgba(11, 49, 85, 0.35);
   cursor: pointer;
 }
+/* Paket C: Kreis = eine Antwort, Kästchen = mehrere Antworten */
+.option::before {
+  content: ''; flex: none; width: 1.05em; height: 1.05em;
+  border: 2px solid var(--navy); border-radius: 50%; background: var(--weiss);
+}
+.optionen--mehrere .option::before { border-radius: 5px; }
 .optionen--ziele .option { flex: 1 1 12em; }
-.option[aria-pressed="true"] { border-color: var(--navy); background: #e4f3f5; font-weight: 700; }
-.option[aria-pressed="true"]::before { content: '●'; margin-right: .2em; }
-.option:disabled { cursor: default; opacity: 1; }
+.option[aria-pressed="true"] { border-color: var(--navy); border-width: 3px; background: #e4f3f5; font-weight: 700; box-shadow: none; }
+.option[aria-pressed="true"]::before { background: radial-gradient(circle, var(--navy) 0 45%, var(--weiss) 52%); }
+.optionen--mehrere .option[aria-pressed="true"]::before {
+  background: var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 90% no-repeat;
+}
+.option:disabled { cursor: default; opacity: 1; box-shadow: none; }
 .option.ist-richtig { border-color: #1e6b3a; background: #e3f4e8; }
 .option.ist-falsch { border-color: var(--fehler); background: var(--fehler-hell); }
-.option__text { flex: 1; }
+.option__text { flex: 1 1 8em; }
 .option__mark { font-weight: 700; white-space: nowrap; }
 .option.ist-richtig .option__mark { color: #1e6b3a; }
 .option.ist-falsch .option__mark { color: var(--fehler); }
 .option:focus-visible, .akte__nachlesen summary:focus-visible, .karte__mitlesen summary:focus-visible { outline-color: var(--navy); }
 .station .knopf:focus-visible { outline-color: var(--navy); }
-.aufgabe__pruefen { margin-top: 14px; border: 2px solid var(--navy); }
+.aufgabe__pruefen { margin-top: 14px; }
+/* Paket C: Hauptaktion (Prüfen, Weiter, Erledigt) immer gleich: Navy gefüllt.
+   Gesperrt: gestrichelt und hell, nicht nur blasser. */
+.station .knopf--haupt { background: var(--navy); color: var(--weiss); border: 2px solid var(--navy); box-shadow: 0 10px 22px -8px rgba(3, 20, 35, 0.55); }
+.station .knopf--haupt .knopf__pfeil { stroke: var(--weiss); }
+.station .knopf--haupt:disabled { background: transparent; color: #23557a; border: 2px dashed rgba(11, 49, 85, 0.55); box-shadow: none; opacity: 1; }
+.station .knopf--haupt:disabled .knopf__pfeil { stroke: #23557a; }
+.station .knopf--haupt:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
 .paare { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 /* Rasterzellen nicht breiter als die Station, auch wenn eine Tabelle darin steckt (Safari) */
 .paare > li, .karten > * { min-width: 0; }
@@ -669,8 +712,7 @@ a.knopf { text-decoration: none; }
 .station__weiter { margin-top: 1.4em; color: #23557a; }
 .station__weiter:empty { display: none; }
 .station__unten { margin-top: 1.2em; display: flex; justify-content: flex-end; }
-.station__unten .knopf { border: 2px solid var(--navy); }
-.station__unten .knopf:disabled { opacity: .55; }
+
 
 /* Abschluss */
 .fertig__stempel { display: flex; align-items: center; justify-content: center; gap: calc(40 * var(--s)); margin-top: calc(30 * var(--s)); }
@@ -712,7 +754,7 @@ a.knopf { text-decoration: none; }
 
 /* ---------- Querformat: Klaro neben die Akten, ohne Scrollen ---------- */
 @media (orientation: landscape) and (min-width: 820px) {
-  .kopf { padding-top: calc(64 * var(--s)); }
+  .kopf { --kopf-oben: calc(64 * var(--s)); }
   .frage { font-size: calc(80 * var(--s)); }
   .akten {
     grid-template-areas: "titel titel" "klaro liste" "buch buch";
@@ -721,7 +763,6 @@ a.knopf { text-decoration: none; }
   }
   .klaro--start { margin-top: 0; width: calc(360 * var(--s)); }
   .akten > .akten__titel { margin-top: 0; }
-  .zurueck { margin-top: calc(-50 * var(--s)); }
 }
 
 /* ---------- Handy hoch ---------- */
@@ -758,12 +799,16 @@ a.knopf { text-decoration: none; }
   font-size: max(14px, calc(16 * var(--s))); line-height: 1.5;
 }
 .erwachsene__teil summary {
-  display: flex; align-items: center; gap: .45em; min-height: 44px; padding: 0 1.1em;
+  display: flex; align-items: center; gap: .5em; min-height: 48px; padding: 0 1.1em;
   cursor: pointer; font-weight: 400; list-style: none;
 }
 .erwachsene__teil summary::-webkit-details-marker { display: none; }
 .erwachsene__teil summary::before {
-  content: '\25B8'; flex: none; font-size: .8em; transition: transform .2s var(--ease);
+  content: ''; flex: none; width: 1em; height: 1em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3.5l4.5 4.5L6 12.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3.5l4.5 4.5L6 12.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform .2s var(--ease);
 }
 .erwachsene__teil[open] summary::before { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .erwachsene__teil summary::before { transition: none; } }

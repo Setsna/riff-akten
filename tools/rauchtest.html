@@ -458,9 +458,16 @@
       return warteAuf('Station 3', function () { return /Station 3/.test(text('h2')) && q('[data-muster]'); })
         .then(function (m) {
           pruefe(m.disabled, 'Musterlösung sofort sichtbar (Bedenkzeit fehlt)');
+          // Paket A: Merkfrage und Zusatzfrage erst nach dem Prüfen der ersten Aufgabe
+          pruefe(q('#a-3\\.2').hidden, 'Merkfrage ist schon vor dem Prüfen von 3.1 sichtbar (verrät die Lösung)');
+          pruefe(q('.aufgabe--zusatz').hidden, 'Zusatzfrage schon am Anfang sichtbar');
           q('#a-3\\.1 .option[data-wert="A"]').click();
           q('#a-3\\.1 [data-pruefen]').click();
-          return warteAuf('Musterlösung frei', function () { return !q('[data-muster]').disabled && q('[data-muster]'); }, 3000);
+          return warteAuf('Merkfrage eingeblendet', function () { return !q('#a-3\\.2').hidden; }, 3000)
+            .then(function () {
+              pruefe(q('#a-3\\.2 .aufgabe__frage') === doc().activeElement, 'Fokus nicht auf der neuen Aufgabe');
+              return warteAuf('Musterlösung frei', function () { return !q('[data-muster]').disabled && q('[data-muster]'); }, 3000);
+            });
         })
         .then(function (m) {
           pruefe(q('#weiter').disabled, 'Weiter frei, obwohl die Merkfrage offen ist');
@@ -472,7 +479,7 @@
           b.click();
           pruefe(win().RA.store.snapshot().eintraege.demo.selbst['3.2'] === 0, 'Selbsteinschätzung nicht gespeichert');
           pruefe(!q('#weiter').disabled, 'Weiter gesperrt, obwohl die Zusatzfrage freiwillig ist');
-          pruefe(q('.aufgabe--zusatz'), 'Zusatzfrage fehlt');
+          return warteAuf('Zusatzfrage eingeblendet', function () { var z = q('.aufgabe--zusatz'); return z && !z.hidden; }, 3000);
         });
     }); })
 

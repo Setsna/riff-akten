@@ -90,7 +90,7 @@ window.RA = window.RA || {};
       ul.innerHTML = l.map(function (f) {
         var geloest = !!s.stempel[f.id];
         return '<li><a class="fenster fenster--akte' + (geloest ? ' ist-geloest' : '') + '" href="#akte/' + esc(f.id) + '">' +
-          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=22" alt="" width="480" height="480">'
+          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=23" alt="" width="480" height="480">'
                   : '<span class="fenster__ohnebild">' + LUPE + '</span>') +
           '<span class="fenster__unten">' +
             '<span class="fenster__nr">Akte ' + esc(f.nr || '') + '</span>' +
@@ -147,7 +147,7 @@ window.RA = window.RA || {};
         }).join('') + '</tbody></table>';
     }
     if (k.audio) {
-      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=22"></audio>' +
+      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=23"></audio>' +
         (k.text ? '<details class="karte__mitlesen"><summary>Text zum Mitlesen</summary>' + absaetze(k.text) + '</details>' : '');
     } else if (k.text) {
       inhalt += absaetze(k.text);
@@ -161,7 +161,7 @@ window.RA = window.RA || {};
     return '<div class="akte__geschichte">' + (fall.geschichte || []).map(function (b) {
       if (b.liste) return '<ul>' + b.liste.map(function (p) { return '<li>' + txt(p) + '</li>'; }).join('') + '</ul>';
       if (b.bild) {
-        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=22" alt="' + esc(b.alt || '') + '" ' +
+        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=23" alt="' + esc(b.alt || '') + '" ' +
           'width="960" height="640" loading="lazy"></figure>';
       }
       return '<p>' + txt(b.absatz) + '</p>';
@@ -212,7 +212,10 @@ window.RA = window.RA || {};
     var geschafft = (e.station || 0) > n;   // schon einmal abgeschlossen
 
     var nav = '<nav class="stationen" aria-label="Stationen dieser Akte"><ol>' + st.map(function (s, i) {
-      var name = '<span class="stationen__nr">' + (i + 1) + '</span> <span class="stationen__name">' + esc(s.titel) + '</span>';
+      // Paket E: erledigte Stationen bekommen einen Haken (sichtbar und für Screenreader)
+      var fertig = geloest || i < (e.station || 0);
+      var name = '<span class="stationen__nr">' + (i + 1) + (fertig ? '<svg class="stationen__haken" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 8.5l3 3 6-7"></path></svg>' : '') + '</span> ' +
+        '<span class="stationen__name">' + esc(s.titel) + '</span>' + (fertig ? '<span class="unsichtbar"> (erledigt)</span>' : '');
       if (i === n) return '<li><span class="stationen__punkt ist-hier" aria-current="step">' + name + '</span></li>';
       if (i <= erreicht) return '<li><a class="stationen__punkt" href="#akte/' + esc(fall.id) + '/' + (i + 1) + '">' + name + '</a></li>';
       return '<li><span class="stationen__punkt ist-zu">' + name + '<span class="unsichtbar"> (noch nicht erreicht)</span></span></li>';
@@ -220,24 +223,27 @@ window.RA = window.RA || {};
 
     var zeige = station.zeige || [];
     var oben = '';
+    // Paket C: Detektivfrage zuerst, die Hilfsmittel darunter in einer Zeile
+    var werkzeuge = [];
     if (zeige.indexOf('geschichte') >= 0) oben += geschichteHtml(fall);
-    else oben += '<details class="akte__nachlesen"><summary>Fallakte noch einmal lesen</summary>' + geschichteHtml(fall) + '</details>';
+    else werkzeuge.push('<details class="akte__nachlesen"><summary>Fallakte noch einmal lesen</summary>' + geschichteHtml(fall) + '</details>');
     if (zeige.indexOf('frage') >= 0 || n > 0) oben += frageHtml(fall);
     if (zeige.indexOf('karten') >= 0) {
-      oben += '<details class="akte__nachlesen"><summary>Alle Hinweise ansehen</summary><div class="karten">' +
-        (fall.karten || []).map(karteHtml).join('') + '</div></details>';
+      werkzeuge.push('<details class="akte__nachlesen"><summary>Alle Hinweise ansehen</summary><div class="karten">' +
+        (fall.karten || []).map(karteHtml).join('') + '</div></details>');
     }
     if (station.hilfe && fall.hilfe) {
-      oben += '<p class="akte__hilfe"><button type="button" class="knopf knopf--leise" id="hilfe-oeffnen">Hilfekarte</button></p>';
+      werkzeuge.push('<button type="button" class="werkzeug" id="hilfe-oeffnen">Hilfekarte</button>');
     }
+    if (werkzeuge.length) oben += '<div class="station__werkzeuge">' + werkzeuge.join('') + '</div>';
 
     var pflicht = station.aufgaben.filter(function (a) { return !a.zusatz; });
     var zusatz = station.aufgaben.filter(function (a) { return a.zusatz; });
     var letzte = n === st.length - 1;
 
     var unten = letzte
-      ? '<button type="button" class="knopf" id="weiter" disabled>Akte abschließen</button>'
-      : '<button type="button" class="knopf" id="weiter"' + (geschafft ? '' : ' disabled') + '>' +
+      ? '<button type="button" class="knopf knopf--haupt" id="weiter" disabled>Akte abschließen</button>'
+      : '<button type="button" class="knopf knopf--haupt" id="weiter"' + (geschafft ? '' : ' disabled') + '>' +
           '<span class="knopf__text">Weiter zu Station ' + (n + 2) + '</span>' +
           '<svg class="knopf__pfeil" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></button>';
 
@@ -249,16 +255,26 @@ window.RA = window.RA || {};
         '<section class="station" aria-labelledby="station-titel">' +
           '<h2 id="station-titel" class="station__titel">Station ' + (n + 1) + ': ' + esc(station.titel) + '</h2>' +
           oben +
-          pflicht.map(function (a) { return aufgabeHtml(fall, a); }).join('') +
-          (zusatz.length ? '<div class="aufgabe--zusatz"><p class="zusatz__titel">Für schnelle Detektive</p>' +
+          pflicht.map(function (a, i) {
+            // Design-Review Paket A: Aufgaben nacheinander, sonst verrät eine spätere
+            // Frage (z. B. die Merkfrage) die Lösung einer früheren.
+            var html = aufgabeHtml(fall, a);
+            return (!geschafft && i > 0) ? html.replace('<div class="aufgabe" ', '<div class="aufgabe" hidden ') : html;
+          }).join('') +
+          (zusatz.length ? '<div class="aufgabe--zusatz"' + (geschafft ? '' : ' hidden') + '><p class="zusatz__titel">Für schnelle Detektive</p>' +
             zusatz.map(function (a) { return aufgabeHtml(fall, a); }).join('') + '</div>' : '') +
           '<p class="station__weiter" id="weiter-hinweis">' + (geschafft || !pflicht.length ? '' :
-            'Wenn du alle Aufgaben geprüft hast, geht es weiter.') + '</p>' +
+            (pflicht.some(function (a) { return a.typ === 'auswahl' || a.typ === 'zuordnen'; })
+              ? 'Wenn du alle Aufgaben geprüft hast, geht es weiter.'
+              : 'Wenn du fertig bist, geht es weiter.')) + '</p>' +
           '<div class="station__unten">' + unten + '</div>' +
         '</section>' +
       '</main>' +
       (station.hilfe && fall.hilfe ? hilfeDialogHtml(fall) : '')
     );
+
+    // Ab Station 2 kompakter Kopf: Aufgabe statt Titel im ersten Blick (Paket B)
+    document.getElementById('app').classList.toggle('ist-kompakt', n > 0);
 
     aktuell = { fall: fall, n: n, offen: {} };
     pflicht.forEach(function (a) { aktuell.offen[a.id] = true; });
@@ -282,7 +298,37 @@ window.RA = window.RA || {};
   function aufgabeErledigt(a) {
     if (!aktuell) return;
     delete aktuell.offen[a.id];
+    naechsteEinblenden();
     weiterPruefen();
+  }
+
+  // Die nächste versteckte Pflichtaufgabe zeigen; sind alle fertig, die Zusatzfrage.
+  function naechsteEinblenden() {
+    var station = document.querySelector('.station');
+    if (!station) return;
+    var naechste = station.querySelector(':scope > .aufgabe[hidden]');
+    var ziel = null;
+    if (naechste) {
+      ziel = naechste;
+      RA.ui.ansagen('Die nächste Aufgabe ist da.');
+    } else if (!Object.keys(aktuell.offen).length) {
+      var z = station.querySelector('.aufgabe--zusatz[hidden]');
+      if (z) { ziel = z; RA.ui.ansagen('Für schnelle Detektive gibt es noch eine Zusatzfrage.'); }
+    }
+    if (!ziel) return;
+    // Kurz warten, damit die Rückmeldung zur letzten Aufgabe zuerst gelesen wird
+    setTimeout(function () {
+      if (!ziel.isConnected) return;
+      ziel.hidden = false;
+      Array.prototype.forEach.call(ziel.querySelectorAll('.aufgabe'), function (x) { if (x._sichtbar) x._sichtbar(); });
+      if (ziel._sichtbar) ziel._sichtbar();
+      var kopf = ziel.querySelector('.aufgabe__frage, .zusatz__titel');
+      if (kopf) {
+        kopf.setAttribute('tabindex', '-1');
+        kopf.focus({ preventScroll: true });
+        ziel.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+      }
+    }, 900);
   }
 
   function weiterPruefen() {
@@ -333,11 +379,11 @@ window.RA = window.RA || {};
   // Aufgaben
   // ==========================================================
   function aufgabeHtml(fall, a) {
-    var kopf = '<h3 class="aufgabe__frage" id="f-' + esc(a.id) + '">' + txt(a.frage || (a.typ === 'tisch' ? 'Am Tisch' : '')) + '</h3>';
+    var kopf = '<h3 class="aufgabe__frage" id="f-' + esc(a.id) + '">' + txt(a.frage || (a.typ === 'tisch' ? 'Deine Aufgabe' : '')) + '</h3>';
     var inhalt = '';
 
     if (a.typ === 'auswahl' || a.typ === 'eintrag') {
-      inhalt = '<div class="optionen" role="group" aria-labelledby="f-' + esc(a.id) + '">' +
+      inhalt = '<div class="optionen' + (a.mehrere ? ' optionen--mehrere' : '') + '" role="group" aria-labelledby="f-' + esc(a.id) + '">' +
         // Auswahl gemischt; „Mein Eintrag“ (leicht / genau richtig / schwer) bleibt in Reihenfolge
         (a.typ === 'auswahl' ? gemischt(a.optionen, fall.id + '|' + a.id) : a.optionen).map(function (o) {
           return '<button type="button" class="option" data-wert="' + esc(optionId(o)) + '" aria-pressed="false">' +
@@ -366,11 +412,11 @@ window.RA = window.RA || {};
         '<div class="muster" hidden></div>';
     } else if (a.typ === 'tisch') {
       inhalt = absaetze(a.text) +
-        '<button type="button" class="knopf knopf--leise" data-erledigt>Erledigt</button>';
+        '<button type="button" class="knopf knopf--haupt" data-erledigt>Erledigt</button>';
     }
 
     var pruefen = (a.typ === 'auswahl' || a.typ === 'zuordnen')
-      ? '<button type="button" class="knopf aufgabe__pruefen" data-pruefen disabled>Prüfen</button>' : '';
+      ? '<button type="button" class="knopf knopf--haupt aufgabe__pruefen" data-pruefen disabled>Prüfen</button>' : '';
 
     return '<div class="aufgabe" id="a-' + esc(a.id) + '" data-typ="' + esc(a.typ) + '">' + kopf + inhalt + pruefen +
       '<div class="rueckmeldung" tabindex="-1" hidden></div></div>';
@@ -428,11 +474,17 @@ window.RA = window.RA || {};
     var musterKnopf = box.querySelector('[data-muster]');
     if (musterKnopf) {
       var sek = typeof a.bedenkzeit === 'number' ? a.bedenkzeit : 15;
-      setTimeout(function () {
-        if (!musterKnopf.isConnected) return;
-        musterKnopf.disabled = false;
-        musterKnopf.textContent = 'Musterlösung ansehen';
-      }, sek * 1000);
+      var bedenkzeit = function () {
+        setTimeout(function () {
+          if (!musterKnopf.isConnected) return;
+          musterKnopf.disabled = false;
+          musterKnopf.textContent = 'Musterlösung ansehen';
+        }, sek * 1000);
+      };
+      // Versteckt (Paket A): erst beim Einblenden starten
+      var huelle = box.closest('[hidden]');
+      if (huelle) box._sichtbar = function () { box._sichtbar = null; bedenkzeit(); };
+      else bedenkzeit();
       musterKnopf.addEventListener('click', function () {
         musterKnopf.disabled = true;
         loesungHolen(fall.id).then(function (l) {
