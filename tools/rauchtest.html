@@ -374,6 +374,7 @@
         .then(function (a) {
           pruefe(/Die verschwundene Muschel/.test(a.textContent), 'Titel fehlt: ' + a.textContent);
           pruefe(a.getAttribute('href') === '#akte/demo', 'Link: ' + a.getAttribute('href'));
+          pruefe(/Genau lesen/.test(text('a.fenster--akte .fenster__thema')), 'Thema fehlt auf der Karte');
           pruefe(!gelesen('loesungen/'), 'Lösung schon auf der Startseite geladen');
           barrierefrei('Startseite mit Akte');
         });

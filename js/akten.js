@@ -90,11 +90,12 @@ window.RA = window.RA || {};
       ul.innerHTML = l.map(function (f) {
         var geloest = !!s.stempel[f.id];
         return '<li><a class="fenster fenster--akte' + (geloest ? ' ist-geloest' : '') + '" href="#akte/' + esc(f.id) + '">' +
-          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=21" alt="" width="480" height="480">'
+          (f.bild ? '<img class="fenster__bild" src="' + esc(f.bild) + '?v=22" alt="" width="480" height="480">'
                   : '<span class="fenster__ohnebild">' + LUPE + '</span>') +
           '<span class="fenster__unten">' +
             '<span class="fenster__nr">Akte ' + esc(f.nr || '') + '</span>' +
             '<span class="fenster__titel">' + esc(f.titel) + '</span>' +
+            (f.thema ? '<span class="fenster__thema">' + esc(f.thema) + '</span>' : '') +
           '</span>' +
           (geloest ? '<span class="fenster__status">gelöst</span>' : '') +
         '</a></li>';
@@ -146,7 +147,7 @@ window.RA = window.RA || {};
         }).join('') + '</tbody></table>';
     }
     if (k.audio) {
-      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=21"></audio>' +
+      inhalt += '<audio class="karte__ton" controls preload="none" src="' + esc(k.audio) + '?v=22"></audio>' +
         (k.text ? '<details class="karte__mitlesen"><summary>Text zum Mitlesen</summary>' + absaetze(k.text) + '</details>' : '');
     } else if (k.text) {
       inhalt += absaetze(k.text);
@@ -160,7 +161,7 @@ window.RA = window.RA || {};
     return '<div class="akte__geschichte">' + (fall.geschichte || []).map(function (b) {
       if (b.liste) return '<ul>' + b.liste.map(function (p) { return '<li>' + txt(p) + '</li>'; }).join('') + '</ul>';
       if (b.bild) {
-        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=21" alt="' + esc(b.alt || '') + '" ' +
+        return '<figure class="akte__bild"><img src="' + esc(b.bild) + '?v=22" alt="' + esc(b.alt || '') + '" ' +
           'width="960" height="640" loading="lazy"></figure>';
       }
       return '<p>' + txt(b.absatz) + '</p>';

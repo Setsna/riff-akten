@@ -32,6 +32,7 @@ window.DEMO_FALL = {
     klasse: 3,
     fach: 'Deutsch',
     schwierigkeit: 1,
+    thema: 'Genau lesen',
     lehrkraft: {
       dauer: 'etwa 15 Minuten',
       lehrplan: ['Nur ein Testfall für den Rauchtest [PDF S. 0]'],

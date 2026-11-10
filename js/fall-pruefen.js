@@ -109,6 +109,10 @@ window.RA = window.RA || {};
       });
     });
     Object.keys(l.aufgaben).forEach(function (k) { if (!ids[k]) fehler('Lösung für unbekannte Aufgabe ' + k + '.'); });
+    // Worum es geht, klein auf der Akten-Karte (freiwillig, kurz)
+    if (fall.thema !== undefined && (typeof fall.thema !== 'string' || !fall.thema.trim() || fall.thema.length > 40)) {
+      fehler('fall.thema muss ein kurzer Text sein (höchstens 40 Zeichen).');
+    }
     // Hinweise für Lehrkräfte (freiwillig). Die Kinder können sie lesen.
     if (fall.lehrkraft !== undefined) {
       var lk = fall.lehrkraft;

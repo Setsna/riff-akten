@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=21) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=22) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -511,6 +511,11 @@ a.knopf { text-decoration: none; }
 .fenster__titel {
   font-family: var(--serif); font-size: max(21px, calc(30 * var(--s))); line-height: 1.1;
   hyphens: auto; -webkit-hyphens: auto; text-wrap: balance;
+}
+/* Worum es geht (fall.thema), klein unter dem Titel */
+.fenster__thema {
+  font-size: max(13px, calc(16 * var(--s))); line-height: 1.25; opacity: .9;
+  text-wrap: balance;
 }
 /* "gelöst" als Schild oben auf dem Bild */
 .fenster__status {
