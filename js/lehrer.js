@@ -12,7 +12,8 @@
 
    Etappe 4: Auswertung (4a); Auskunft als Datei, endgültig Löschen,
    Aufräumen lange inaktiver Kinder, Kind einzeln anlegen (4b);
-   Sicherung herunterladen und wiederherstellen (4c).
+   Sicherung herunterladen und wiederherstellen (4c); Akten ein- und
+   ausblenden, als Fall-Datei herunterladen, löschen (4d).
    ========================================================== */
 (function () {
   'use strict';
@@ -244,12 +245,22 @@
         '<div class="tabelle-rahmen"><table class="tabelle">' +
           '<caption class="unsichtbar">Vorhandene Akten</caption>' +
           '<thead><tr><th scope="col">Nr.</th><th scope="col">Titel</th><th scope="col">Kennung</th>' +
-          '<th scope="col">Klasse</th><th scope="col">Sichtbar</th></tr></thead>' +
+          '<th scope="col">Klasse</th><th scope="col">Für Kinder sichtbar</th>' +
+          '<th scope="col"><span class="unsichtbar">Aktionen</span></th></tr></thead>' +
           '<tbody>' + (akten.map(function (a) {
+            var an = a.aktiv !== false;
             return '<tr><td>' + esc(a.nr || '') + '</td><th scope="row">' + esc(a.titel) + '</th>' +
               '<td class="code">' + esc(a.id) + '</td><td>' + esc(a.klasse || '') + '</td>' +
-              '<td>' + (a.aktiv === false ? 'nein' : 'ja') + '</td></tr>';
-          }).join('') || '<tr><td colspan="5">Noch keine Akten.</td></tr>') + '</tbody>' +
+              '<td>' + (an ? 'ja' : 'nein (ausgeblendet)') + '</td>' +
+              '<td class="aktionen">' +
+                '<button type="button" class="lknopf leise klein" data-akte-sichtbar="' + esc(a.id) + '">' +
+                  (an ? 'Ausblenden' : 'Einblenden') + '<span class="unsichtbar"> „' + esc(a.titel) + '“</span></button>' +
+                '<button type="button" class="lknopf leise klein" data-akte-laden="' + esc(a.id) + '">' +
+                  'Herunterladen<span class="unsichtbar"> „' + esc(a.titel) + '“</span></button>' +
+                '<button type="button" class="lknopf leise klein gefahr" data-akte-loeschen="' + esc(a.id) + '">' +
+                  'Löschen<span class="unsichtbar"> „' + esc(a.titel) + '“</span></button>' +
+              '</td></tr>';
+          }).join('') || '<tr><td colspan="6">Noch keine Akten.</td></tr>') + '</tbody>' +
         '</table></div>' +
         '<h3>Akte hochladen</h3>' +
         '<p class="lhinweis">Lade eine Fall-Datei (<b>.json</b> mit <code>id</code>, <code>fall</code> und ' +
@@ -280,6 +291,15 @@
       r.readAsText(f, 'utf-8');
     });
     el('akte-hochladen').addEventListener('click', aktenHochladen);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-akte-sichtbar]'), function (b) {
+      b.addEventListener('click', function () { akteSichtbar(b.getAttribute('data-akte-sichtbar'), b); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-akte-laden]'), function (b) {
+      b.addEventListener('click', function () { akteHerunterladen(b.getAttribute('data-akte-laden'), b); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-akte-loeschen]'), function (b) {
+      b.addEventListener('click', function () { akteLoeschen(b.getAttribute('data-akte-loeschen'), b); });
+    });
     auswertungBinden();
     Array.prototype.forEach.call(document.querySelectorAll('[data-sperren]'), function (b) {
       b.addEventListener('click', function () { sperren(b.getAttribute('data-sperren'), b); });
@@ -793,6 +813,55 @@
     }).catch(function (e) {
       erg.innerHTML = '<p class="lmeldung fehler">Wiederherstellen fehlgeschlagen: ' + esc(e.message || e) + '</p>';
     });
+  }
+
+  // ==========================================================
+  // Akten verwalten (Etappe 4d)
+  // ==========================================================
+  function akteVon(id) { return akten.filter(function (a) { return a.id === id; })[0]; }
+
+  function akteSichtbar(id, knopf) {
+    var a = akteVon(id);
+    if (!a) return;
+    var neu = a.aktiv === false;
+    knopf.disabled = true;
+    db.collection('faelle').doc(id).set({ aktiv: neu }, { merge: true }).then(function () {
+      return laden();
+    }).then(function () {
+      ansagen('„' + a.titel + '“ ist jetzt ' + (neu ? 'für die Kinder sichtbar.' : 'ausgeblendet.'));
+      var b = document.querySelector('[data-akte-sichtbar="' + id + '"]');
+      if (b) b.focus();
+    }, function (e) {
+      knopf.disabled = false;
+      frage('Ändern fehlgeschlagen', e.message || String(e), 'OK', knopf);
+    });
+  }
+
+  // Im selben Format wie beim Hochladen: { id, fall, loesung }
+  function akteHerunterladen(id, knopf) {
+    var a = akteVon(id);
+    if (!a) return;
+    db.collection('loesungen').doc(id).get().then(function (s) {
+      var fall = JSON.parse(JSON.stringify(a));
+      delete fall.id;
+      herunterladen('Akte-' + dateiname(id) + '-' + heute() + '.json',
+        { id: id, fall: fall, loesung: s.exists ? s.data() : { aufgaben: {} } });
+      ansagen('Akte „' + a.titel + '“ heruntergeladen.');
+    }, function (e) { frage('Herunterladen fehlgeschlagen', e.message || String(e), 'OK', knopf); });
+  }
+
+  function akteLoeschen(id, knopf) {
+    var a = akteVon(id);
+    if (!a) return;
+    frage('Akte löschen?', '„' + a.titel + '“ und ihre Lösungen werden gelöscht. Die Kinder sehen die Akte ' +
+      'danach nicht mehr. Stempel und Lernzeit in den Detektivbüchern bleiben erhalten. Tipp: Vorher ' +
+      '„Herunterladen“, dann kannst du die Akte später wieder hochladen.', 'Akte löschen', knopf)
+      .then(function (ja) {
+        if (!ja) return;
+        Promise.all([db.collection('faelle').doc(id).delete(), db.collection('loesungen').doc(id).delete()])
+          .then(function () { laden(); ansagen('Akte „' + a.titel + '“ gelöscht.'); },
+                function (e) { frage('Löschen fehlgeschlagen', e.message || String(e), 'OK'); });
+      });
   }
 
   // Testhilfe für den Rauchtest

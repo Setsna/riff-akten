@@ -527,6 +527,24 @@
         });
     }); })
 
+    .then(function () { return test('Ausgeblendete Akte: nicht in der Liste, auch nicht über den direkten Link', function () {
+      var d = mitDemo();
+      d['faelle/demo'].aktiv = false;
+      return appLaden({ daten: d, hash: '#c=' + CODE })
+        .then(aufStart)
+        // Fertig geladen: der Platzhalter heißt dann „Die nächste Akte“
+        .then(function () { return warteAuf('Liste fertig', function () { return /nächste Akte/.test(text('#akten-liste')); }); })
+        .then(function () {
+          pruefe(!q('a.fenster--akte'), 'Ausgeblendete Akte steht auf der Startseite');
+          win().location.hash = 'akte/demo';
+          return warteAuf('gesperrt', function () { return /nicht gefunden/.test(text('h1')); });
+        })
+        .then(function () {
+          win().location.hash = '';
+          return aufStart();
+        });
+    }); })
+
     .then(function () { return test('„Ich bin nicht Mila“ meldet ab', function () {
       q('#nicht-ich').click();
       return aufAnmeldung().then(function () { barrierefrei('Anmeldung'); });
@@ -889,6 +907,56 @@
           return warteAuf('überschrieben', function () { return D['fortschritt/' + CODE.toLowerCase()].zeit.demo === 100; });
         })
         .then(function () { barrierefrei('Lehrerbereich mit Sicherung'); });
+    }); })
+
+    .then(function () { return test('Akten verwalten: aus-/einblenden, herunterladen (gültige Fall-Datei), löschen', function () {
+      var d = grunddaten();
+      d['faelle/demo'] = Object.assign({ aktiv: true }, JSON.parse(JSON.stringify(window.DEMO_FALL.fall)));
+      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: { demo: 1 }, stempel: { demo: 1 }, zeit: { demo: 60 }, eintraege: {}, geaendert: Date.now() };
+      var D;
+      return lehrerLaden({ daten: d })
+        .then(googleKlick)
+        .then(function () { return warteAuf('Akten-Knöpfe', function () { return q('[data-akte-sichtbar="demo"]'); }); })
+        .then(function (b) {
+          D = win().ATTRAPPE.daten;
+          pruefe(/Ausblenden/.test(b.textContent), 'Knopf: ' + b.textContent);
+          b.click();
+          return warteAuf('ausgeblendet', function () {
+            var k = q('[data-akte-sichtbar="demo"]');
+            return D['faelle/demo'].aktiv === false && k && /Einblenden/.test(k.textContent) && k;
+          });
+        })
+        .then(function (k) {
+          pruefe(/nein \(ausgeblendet\)/.test(text('section[aria-labelledby="t-akten"] tbody')), 'Status in der Tabelle fehlt');
+          pruefe(D['faelle/demo'].titel === 'Die verschwundene Muschel', 'Ausblenden hat die Akte verändert');
+          k.click();
+          return warteAuf('eingeblendet', function () { return D['faelle/demo'].aktiv === true; });
+        })
+        .then(function () {
+          return warteAuf('neu gezeichnet', function () { return q('[data-akte-laden="demo"]'); });
+        })
+        .then(function (b) {
+          win().HTMLAnchorElement.prototype.click = function () {};
+          b.click();
+          return warteAuf('Download', function () {
+            var dl = win().RA.lehrer.letzterDownload();
+            return dl && /^Akte-demo-/.test(dl.name) && dl;
+          });
+        })
+        .then(function (dl) {
+          var f = win().RA.fallPruefen(dl.daten);
+          pruefe(!f.length, 'Heruntergeladene Akte besteht die Prüfung nicht: ' + f.join(' | '));
+          pruefe(dl.daten.loesung.aufgaben['1.1'], 'Lösung fehlt in der Datei');
+          q('[data-akte-loeschen="demo"]').click();
+          pruefe(q('#dialog').open && /Stempel und Lernzeit/.test(text('#dialog-text')), 'Rückfrage fehlt');
+          q('#dialog-ja').click();
+          return warteAuf('gelöscht', function () { return !D['faelle/demo'] && !D['loesungen/demo']; });
+        })
+        .then(function () {
+          pruefe(D['fortschritt/' + CODE.toLowerCase()].stempel.demo, 'Stempel des Kindes wurde mitgelöscht');
+          barrierefrei('Lehrerbereich Akten verwalten');
+        });
     }); })
 
     // ================= Rechtstexte =================
