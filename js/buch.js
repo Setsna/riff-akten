@@ -20,7 +20,7 @@ window.RA = window.RA || {};
   'use strict';
 
   var C = RA.config;
-  var V = '?v=23';
+  var V = '?v=24';
 
   function abzeichenDaten(id) {
     for (var i = 0; i < C.abzeichen.length; i++) if (C.abzeichen[i].id === id) return C.abzeichen[i];
