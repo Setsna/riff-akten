@@ -85,7 +85,7 @@ p { margin: 0; }
 .grund {
   position: fixed; inset: 0; z-index: -3;
   /* Ersatz, solange das Bild lädt: oben hell, damit Navy sofort lesbar ist */
-  background: url(../bilder/riffgrund.webp?v=25) 50% 0 / cover no-repeat,
+  background: url(../bilder/riffgrund.webp?v=26) 50% 0 / cover no-repeat,
               linear-gradient(180deg, #e6f2ef 0%, #a9d4e1 30%, #3f86a8 62%, #12425f 100%);
 }
 .licht {
@@ -449,9 +449,11 @@ a.knopf { text-decoration: none; }
 .lernzeit__gesamt { padding: .7em 1.2em; }
 .lernzeit__liste {
   list-style: none; margin: 14px 0 0; padding: .4em 1.2em;
-  width: min(100%, max(300px, calc(600 * var(--s))));
+  box-sizing: border-box; width: 100%;
 }
-.lernzeit__liste li { display: flex; justify-content: space-between; gap: 1em; padding: .4em 0; text-align: left; }
+.lernzeit__liste li { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; padding: .4em 0; text-align: left; }
+.lernzeit__liste li > span:first-child { flex: 1 1 auto; min-width: 0; }
+.lernzeit__liste li > span:last-child { flex: 0 0 auto; white-space: nowrap; text-align: right; }
 .lernzeit__liste li + li { border-top: 1px solid rgba(11, 49, 85, 0.2); }
 
 /* Dialog: Abzeichen wählen */
