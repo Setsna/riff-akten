@@ -840,3 +840,7 @@ a.knopf { text-decoration: none; }
 .erwachsene__teil a { color: var(--navy); text-decoration: underline; }
 .lehrkraft__akte { margin-top: 1em; padding-top: .6em; border-top: 2px solid var(--sand-rand); }
 .lehrkraft__steck { font-size: .92em; }
+
+/* Kein Doppeltipp-Zoom in Safari (Kinder tippen Knöpfe schnell hintereinander, Safari zoomte dann).
+   Zoomen mit zwei Fingern bleibt möglich. Flächen zum Ziehen oder Malen behalten ihr eigenes touch-action. (12.11.2026) */
+html, body, button, a, input, label, summary, select, textarea { touch-action: manipulation; }
