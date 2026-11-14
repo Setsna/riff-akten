@@ -57,7 +57,7 @@
   window.VORSCHAU_SZENARIO = szen;
 
   fetch('/index.html?t=' + Date.now()).then(function (r) { return r.text(); }).then(function (html) {
-    var fb = /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"><\/script>\s*/g;
+    var fb = /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"[^>]*><\/script>\s*/g;
     var n = 0;
     var ersatz = p.has('offline') ? '' :
       // Der Speicher-Lauscher muss im neuen Dokument stehen:
