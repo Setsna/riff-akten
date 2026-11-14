@@ -138,7 +138,15 @@
 
     var lehrer = opt.seite === 'lehrer';
     var html = lehrer ? lehrerText : quelltext;
-    var fb = /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"><\/script>\s*/g;
+    // Die Content Security Policy der Seite muss für den Test raus: Sie
+    // verbietet genau das, was der Test tut (Skripte in die Seite
+    // einsetzen, <base> umbiegen). Der Test prüft die App, nicht die CSP.
+    var csp = /<meta http-equiv="Content-Security-Policy"[^>]*>\s*/i;
+    if (!csp.test(html)) {
+      return Promise.reject(new Error((lehrer ? 'lehrer.html' : 'index.html') + ' hat keine Content Security Policy mehr.'));
+    }
+    html = html.replace(csp, '');
+    var fb =/<script src="https:\/\/www\.gstatic\.com\/firebasejs\/[^"]+"><\/script>\s*/g;
     var treffer = html.match(fb) || [];
     if (treffer.length !== 3) {
       return Promise.reject(new Error('index.html bindet ' + treffer.length + ' statt 3 Firebase-Skripte ein.'));

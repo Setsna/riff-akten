@@ -67,6 +67,9 @@
       'JSON.stringify({ daten: ATTRAPPE.daten, konten: ATTRAPPE.konten })); } catch (e) {} });<\/script>' +
       '<script src="tools/test/firebase-attrappe.js"><\/script>\n';
     html = html.replace(fb, function () { return n++ === 0 ? ersatz : ''; });
+    // Die Content Security Policy aus index.html muss für die Vorschau
+    // raus: Sie verbietet die hier eingesetzten Skripte und <base>.
+    html = html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>\s*/i, '');
     html = html.replace(/<head>/i, '<head><base href="/">');
     if (!p.has('login') && !p.has('offline') && !location.hash) {
       history.replaceState(null, '', location.pathname + location.search + '#c=' + CODE);
