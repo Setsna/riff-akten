@@ -72,7 +72,19 @@ service cloud.firestore {
                         && request.resource.data.geaendert is int
                         && (!('abzeichen' in request.resource.data)
                             || (request.resource.data.abzeichen is string
-                                && request.resource.data.abzeichen.size() <= 20)));
+                                && request.resource.data.abzeichen.size() <= 20))
+                        // Die vier Sammlungen muessen Sammlungen sein und
+                        // duerfen nicht beliebig wachsen: ein Eintrag je Akte,
+                        // 200 ist weit mehr, als es Akten gibt. Fehlt ein Feld,
+                        // gilt es als leer.
+                        && request.resource.data.get('erledigt', {}) is map
+                        && request.resource.data.get('erledigt', {}).size() <= 200
+                        && request.resource.data.get('stempel', {}) is map
+                        && request.resource.data.get('stempel', {}).size() <= 200
+                        && request.resource.data.get('zeit', {}) is map
+                        && request.resource.data.get('zeit', {}).size() <= 200
+                        && request.resource.data.get('eintraege', {}) is map
+                        && request.resource.data.get('eintraege', {}).size() <= 200);
       allow delete: if istLehrer();
     }
 
