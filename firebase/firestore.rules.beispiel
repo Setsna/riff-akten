@@ -1,119 +1,70 @@
-rules_version = '2';
-// ============================================================
-//  Riff-Akten – Zugriffsregeln für Firestore
-//  Projekt: riff-akten
+// ==========================================================
+// Riff-Akten – Firestore-Regeln (Auszug)
 //
-//  BEISPIEL: Vor dem Einfügen in die Firebase-Konsole
-//  DEINE-EMAIL@example.com durch die echte Adresse ersetzen.
-//  Die echte Fassung heißt firebase/firestore.rules und kommt
-//  NIE ins Repository (.gitignore).
+// Seit dem Konto-Umbau (14.11.2026) laufen die Riff-Akten im
+// Firebase-Projekt des Perlentauchers ("lernplattform-44aa1").
+// Es gibt dort genau EINE Regeldatei fuer alle Plattformen. Sie
+// steht als Vorlage im Repository des Perlentauchers
+// (firebase/firestore.rules.beispiel); die gueltige Fassung liegt
+// nur in der Firebase-Konsole.
 //
-//  Grundsatz: Alles ist verboten, außer es steht hier ausdrücklich.
-//  Ein Kind kommt nur an seinen eigenen Fortschritt. Die Lehrkraft
-//  kommt an alles. Niemand kann die Kinderliste durchblättern.
-// ============================================================
-service cloud.firestore {
-  match /databases/{database}/documents {
+// Hier steht nur der Teil der Riff-Akten. Er benutzt die
+// Funktionen istLehrer(), istKind(), freigeschaltet() und
+// istKlassenmitglied() aus der gemeinsamen Datei und steht dort
+// vor dem Schlussblock "Alles Uebrige ist gesperrt".
+//
+// Wer diesen Block aendert, aendert auch tools/test/firebase-attrappe.js
+// (Funktion gueltig), sonst prueft der Rauchtest etwas anderes.
+// ==========================================================
 
-    // ---------- Wer ist wer? ----------
-    // Lehrkraft: meldet sich mit diesem Google-Konto an.
-    function istLehrer() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() in [
-             'DEINE-EMAIL@example.com'
-           ];
+    // ---------- Riff-Akten: Stand eines Kindes ----------
+    // Ein Dokument je Kind: ra_stand/<code>. Kein Vorname.
+    // Kein Kind kann den Stand eines anderen Kindes lesen.
+
+    // Was die App schreibt (Riff-Akten js/merge.js, mische): genau diese
+    // Felder, mit diesen Typen. Ein Eintrag je Akte; 200 liegt weit ueber
+    // dem, was es an Akten gibt (8). Neue Felder brauchen eine Regelaenderung.
+    function raStandGueltig(d) {
+      return d.keys().hasOnly(
+               ['erledigt', 'stempel', 'zeit', 'eintraege', 'abzeichen', 'angelegt', 'geaendert'])
+        && d.keys().hasAll(
+               ['erledigt', 'stempel', 'zeit', 'eintraege', 'abzeichen', 'angelegt', 'geaendert'])
+        && d.erledigt is map && d.erledigt.size() <= 200
+        && d.stempel is map && d.stempel.size() <= 200
+        && d.zeit is map && d.zeit.size() <= 200
+        && d.eintraege is map && d.eintraege.size() <= 200
+        && d.abzeichen is string && d.abzeichen.size() <= 20
+        && d.angelegt is int
+        && d.geaendert is int;
     }
 
-    // Kind: meldet sich unsichtbar mit <code>@riff-akten.firebaseapp.com an
-    // (js/cloud.js: mailVon). Der Code steht klein geschrieben vorne.
-    function istKind(code) {
-      return request.auth != null
-        && request.auth.token.email == code + '@riff-akten.firebaseapp.com';
-    }
+    match /ra_stand/{code} {
+      // get = das eigene Dokument gezielt holen.
+      // list = alle durchblaettern (nur Lehrkraft, fuer Sicherung und Auswertung).
+      allow get:    if istLehrer() || (istKind(code) && freigeschaltet(code));
+      allow list:   if istLehrer();
 
-    // Nur Codes, die du angelegt hast, zählen als freigeschaltet.
-    function freigeschaltet(code) {
-      return exists(/databases/$(database)/documents/kinder/$(code));
-    }
+      // Das Kind schreibt nur seinen eigenen Stand und nur in der
+      // erlaubten Form. Die Lehrkraft darf schreiben, damit sie eine
+      // Sicherung wieder einlesen kann.
+      allow create, update: if istLehrer()
+                            || (istKind(code) && freigeschaltet(code)
+                                && raStandGueltig(request.resource.data));
 
-    function mailCode() {
-      return request.auth.token.email.split('@')[0];
-    }
-
-    // WICHTIG: "request.auth != null" allein ist KEINE Schranke. Jeder
-    // kann sich mit dem öffentlichen API-Schlüssel selbst ein Konto
-    // anlegen. Erst der Blick in "kinder" macht daraus eine Prüfung.
-    function istKlassenmitglied() {
-      return request.auth != null
-        && request.auth.token.email is string
-        && request.auth.token.email.matches('^[a-z0-9]+@riff-akten[.]firebaseapp[.]com$')
-        && freigeschaltet(mailCode());
-    }
-
-    // ---------- Kinderliste: Vorname und Code ----------
-    // get  = ein Kind gezielt nachschlagen (das Kind sich selbst)
-    // list = die ganze Liste durchblättern (nur Lehrkraft)
-    match /kinder/{code} {
-      allow get:   if istLehrer() || istKind(code);
-      allow list:  if istLehrer();
-      allow write: if istLehrer();
-    }
-
-    // ---------- Fortschritt eines Kindes ----------
-    // Erledigte Akten, Stempel, Lernzeit, gewähltes Abzeichen. Kein Kind sieht den
-    // Fortschritt eines anderen.
-    match /fortschritt/{code} {
-      allow read:   if istLehrer() || istKind(code);
-      allow write:  if istLehrer()
-                    || (istKind(code) && freigeschaltet(code)
-                        && request.resource.data.keys().hasOnly(
-                             ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'])
-                        && request.resource.data.geaendert is int
-                        && (!('abzeichen' in request.resource.data)
-                            || (request.resource.data.abzeichen is string
-                                && request.resource.data.abzeichen.size() <= 20))
-                        // Die vier Sammlungen muessen Sammlungen sein und
-                        // duerfen nicht beliebig wachsen: ein Eintrag je Akte,
-                        // 200 ist weit mehr, als es Akten gibt. Fehlt ein Feld,
-                        // gilt es als leer.
-                        && request.resource.data.get('erledigt', {}) is map
-                        && request.resource.data.get('erledigt', {}).size() <= 200
-                        && request.resource.data.get('stempel', {}) is map
-                        && request.resource.data.get('stempel', {}).size() <= 200
-                        && request.resource.data.get('zeit', {}) is map
-                        && request.resource.data.get('zeit', {}).size() <= 200
-                        && request.resource.data.get('eintraege', {}) is map
-                        && request.resource.data.get('eintraege', {}).size() <= 200);
       allow delete: if istLehrer();
     }
 
-    // ---------- Einstellungen der Klasse ----------
-    match /einstellungen/{id} {
+    // ---------- Riff-Akten: Akten und Loesungen ----------
+    // Was die Kinder sehen (ra_faelle) und die Loesungen (ra_loesungen,
+    // werden erst beim Pruefen geladen). Keine Kinderdaten. Lesen duerfen
+    // die Lehrkraft und jedes freigeschaltete Kind, schreiben nur die
+    // Lehrkraft (Lehrerbereich der Riff-Akten: "Akte hochladen").
+    match /ra_faelle/{id} {
+      allow read:  if istLehrer() || istKlassenmitglied();
+      allow write: if istLehrer();
+    }
+    match /ra_loesungen/{id} {
       allow read:  if istLehrer() || istKlassenmitglied();
       allow write: if istLehrer();
     }
 
-    // ---------- Akten ----------
-    // Was die Kinder sehen (Geschichte, Hinweise, Aufgaben). Nur
-    // freigeschaltete Kinder und die Lehrkraft lesen, nur die Lehrkraft
-    // schreibt (Lehrerbereich: "Akte hochladen").
-    match /faelle/{id} {
-      allow read:  if istLehrer() || istKlassenmitglied();
-      allow write: if istLehrer();
-    }
-
-    // ---------- Lösungen ----------
-    // Getrennt von den Akten, damit sie nicht schon beim Öffnen einer
-    // Akte mitkommen. Die App lädt sie erst beim Tippen auf "Prüfen".
-    match /loesungen/{id} {
-      allow read:  if istLehrer() || istKlassenmitglied();
-      allow write: if istLehrer();
-    }
-
-    // ---------- Alles Übrige ist gesperrt ----------
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}

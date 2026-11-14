@@ -740,7 +740,12 @@
           w.ATTRAPPE.lehrer = ['lehrkraft@example.com'];
           return abgelehnt(db.collection('ra_faelle').doc('neu').set({ titel: 'x' }), 'Akte schreiben als Kind');
         })
-        .then(function () { return db.collection('ra_stand').doc(id).set({ geaendert: 2, zeit: { demo: 5 } }); });
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc(id).set({ geaendert: 2, zeit: { demo: 5 } }), 'Stand ohne Pflichtfelder'); })
+        .then(function () {
+          // Gegenprobe: ein vollständiger Stand geht durch
+          return db.collection('ra_stand').doc(id).set({ erledigt: {}, stempel: {}, zeit: { demo: 5 }, eintraege: {},
+            abzeichen: '', angelegt: 1, geaendert: 2 });
+        });
     }); })
 
     // ================= Lehrerbereich =================

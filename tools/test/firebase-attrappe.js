@@ -94,13 +94,14 @@
   // Wie raStandGueltig() im Regel-Block: nur diese Felder, Typen, Obergrenzen
   var RA_FELDER = ['erledigt', 'stempel', 'zeit', 'eintraege', 'abzeichen', 'angelegt', 'geaendert'];
   function ganzzahl(x) { return typeof x === 'number' && isFinite(x) && Math.floor(x) === x; }
-  function karte200(x) { return x === undefined || (x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length <= 200); }
+  function karte200(x) { return !!x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length <= 200; }
   function gueltig(d) {
     if (!d || typeof d !== 'object') return false;
-    if (Object.keys(d).some(function (k) { return RA_FELDER.indexOf(k) < 0; })) return false;
-    if (!ganzzahl(d.geaendert)) return false;
-    if ('angelegt' in d && !ganzzahl(d.angelegt)) return false;
-    if ('abzeichen' in d && !(typeof d.abzeichen === 'string' && d.abzeichen.length <= 20)) return false;
+    var k = Object.keys(d);
+    if (k.some(function (f) { return RA_FELDER.indexOf(f) < 0; })) return false;          // hasOnly
+    if (RA_FELDER.some(function (f) { return k.indexOf(f) < 0; })) return false;          // hasAll
+    if (!ganzzahl(d.geaendert) || !ganzzahl(d.angelegt)) return false;
+    if (!(typeof d.abzeichen === 'string' && d.abzeichen.length <= 20)) return false;
     return karte200(d.erledigt) && karte200(d.stempel) && karte200(d.zeit) && karte200(d.eintraege);
   }
   A.gueltig = gueltig;
