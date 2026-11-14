@@ -8,6 +8,11 @@ Begleiter ist Klaro, ein Einsiedlerkrebs. Es gibt keine Punkte, keinen Zeitdruck
 **Kinder-App:** https://setsna.github.io/riff-akten/
 **Lehrerbereich:** https://setsna.github.io/riff-akten/lehrer.html
 
+**Gemeinsames Konto (seit 14.11.2026):** Die Kinder melden sich mit ihrem Code vom Perlentaucher an.
+Die Riff-Akten nutzen dessen Firebase-Projekt (`lernplattform-44aa1`). Der Lernstand liegt in
+`ra_stand/<code>`, die Akten in `ra_faelle` und `ra_loesungen`. Kinder anlegen, löschen, Auskunft,
+Sicherung und Zurücksetzen laufen im Lehrerbereich des Perlentauchers.
+
 Schwesterseite der [Lernlagune](https://lernlagune.de); die Gestaltung folgt deren `DESIGN.md`.
 
 ## Aufbau einer Akte
@@ -25,12 +30,13 @@ Akten sind **Daten, kein Code**. Eine neue Akte braucht keine Programmänderung.
 | Datei | Inhalt |
 |---|---|
 | `index.html` | Kinder-App mit Startseite, Akten, Detektivbuch und Bereich „Für Erwachsene“ |
-| `lehrer.html` | Lehrerbereich: Kinder freischalten und sperren, Akten hochladen und verwalten, Auswertung, Sicherung und Wiederherstellen, Auskunft, Löschen, Aufräumen |
+| `lehrer.html` | Lehrerbereich: Kinderliste ansehen, Auswertung, Akten hochladen und verwalten |
 | `datenschutz.html`, `impressum.html` | Rechtstexte (Datenschutz kurz für Kinder und ausführlich) |
 | `js/config.js` | **Alle Einstellungen**, auch die Firebase-Zugangsdaten (nicht geheim) |
-| `js/cloud.js` | Anmeldung per Code und Speichern in Firebase |
+| `js/konto-abgleich.js`, `js/konto-speicher.js`, `js/konto-cloud.js` | Baukasten des gemeinsamen Kontos (Kopie aus Lernlagune-Konto): Zusammenführen, Speicher im Browser, Anmeldung und Abgleich |
+| `js/cloud.js` | Verbindet den Baukasten mit der App, liest die Akten |
 | `js/store.js` | Fortschritt im Browser (je Kind ein Speicherplatz) |
-| `js/merge.js` | Führt den Fortschritt von zwei Geräten zusammen |
+| `js/merge.js` | Aufbau des Lernstands und wie zwei Geräte zusammengeführt werden |
 | `js/app.js` | Ansichten der Kinder-App (Anmeldung, Startseite) |
 | `js/akten.js` | Akten-Liste, Stationen und Aufgabenarten, Hilfekarte |
 | `js/buch.js` | Detektivbuch, Lernzeit-Uhr, Ausweis und Urkunde als PDF |
@@ -46,9 +52,9 @@ Akten sind **Daten, kein Code**. Eine neue Akte braucht keine Programmänderung.
 | `tools/vorschau.html` | Kinder-App mit Firebase-Attrappe und Testkind „Mila“ (`?neu`, `?login`, `?offline`) |
 | `tools/rauchtest.html` | Automatischer Rauchtest von Kinder-App, Lehrerbereich und Rechtstexten |
 | `tools/fall_pruefen.js` | Prüft eine Akte ohne Browser: `node tools/fall_pruefen.js akte.json` |
-| `tools/test/firebase-attrappe.js` | Ersetzt Firebase im Test; nichts geht an die echte Datenbank |
+| `tools/test/firebase-attrappe.js` | Ersetzt Firebase im Test und ahmt die Regeln nach; nichts geht an die echte Datenbank |
 | `tools/test/demo-fall.js` | Erfundene Übungsakte nur für Vorschau und Rauchtest |
-| `tools/qr_aufkleber.py` | Druckbogen mit QR-Aufklebern, `zugangscodes.csv` und `kinder.json` |
+| `tools/qr_aufkleber.py` | Druckbogen mit QR-Aufklebern (aus der Zeit vor dem gemeinsamen Konto; die Aufkleber kommen jetzt vom Perlentaucher) |
 
 ## Nach einer Änderung: Versionsnummer hochzählen
 
@@ -73,5 +79,5 @@ Repository (`firebase/firestore.rules` steht in `.gitignore`). Im Repo liegt nur
 ## Technik
 
 Reines HTML, CSS und JavaScript ohne Framework und ohne Build-Schritt, gehostet auf GitHub Pages.
-Anmeldung und Fortschritt über Firebase (Authentication und Firestore, Region europe-west3).
+Anmeldung und Fortschritt über Firebase (Authentication und Firestore) im gemeinsamen Projekt der Lernlagune.
 Außer Firebase werden keine fremden Dienste eingebunden.

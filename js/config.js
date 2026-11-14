@@ -11,16 +11,30 @@ RA.config = {
   name: 'Riff-Akten',
   maskottchen: { name: 'Klaro', tier: 'Einsiedlerkrebs' },
 
-  // Firebase-Projekt "riff-akten" (privates Google-Konto der Lehrkraft).
+  // Firebase: das gemeinsame Projekt der Lernlagune (Perlentaucher,
+  // "lernplattform-44aa1"), seit dem Konto-Umbau am 14.11.2026.
+  // Die Kinder melden sich mit ihrem Perlentaucher-Code an.
   // Diese Werte sind nicht geheim: Sie stehen in jeder Web-App im
   // Quelltext. Geschützt wird die Datenbank durch die Firestore-Regeln.
   firebase: {
-    apiKey: 'AIzaSyBXIUIuPcIbCJlBWxLuE9ld2EqS-uEo1_I',
-    authDomain: 'riff-akten.firebaseapp.com',
-    projectId: 'riff-akten',
-    storageBucket: 'riff-akten.firebasestorage.app',
-    messagingSenderId: '902428130393',
-    appId: '1:902428130393:web:e06d2bdfe369b89cc28548'
+    apiKey: 'AIzaSyBX3MUJq69uFyejbEiJimGeAtHMER3OCdE',
+    authDomain: 'lernplattform-44aa1.firebaseapp.com',
+    projectId: 'lernplattform-44aa1',
+    storageBucket: 'lernplattform-44aa1.firebasestorage.app',
+    messagingSenderId: '213839225177',
+    appId: '1:213839225177:web:4cf676269e50c708466c48'
+  },
+
+  // Sammlungen in der Datenbank (Namen siehe Lernlagune-Konto, 02-Datenmodell.md)
+  //   kinder        gehört dem Perlentaucher: Vorname, von der Lehrkraft angelegt
+  //   stand         ra_stand/<code>: Fortschritt eines Kindes in den Riff-Akten
+  //   faelle        ra_faelle/<akte>: was die Kinder sehen
+  //   loesungen     ra_loesungen/<akte>: erst beim Prüfen geladen
+  sammlung: {
+    kinder: 'kinder',
+    stand: 'ra_stand',
+    faelle: 'ra_faelle',
+    loesungen: 'ra_loesungen'
   },
 
   // Zugangscodes: acht Zeichen, ohne leicht verwechselbare Zeichen

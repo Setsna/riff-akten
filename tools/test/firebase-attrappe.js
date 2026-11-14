@@ -2,6 +2,11 @@
    Riff-Akten – Firebase-Attrappe für den Rauchtest
 
    Ersetzt im Test die drei Firebase-Skripte aus index.html.
+   Seit dem Konto-Umbau (14.11.2026) ahmt sie die Regeln des
+   gemeinsamen Projekts nach (Blöcke ra_stand, ra_faelle,
+   ra_loesungen, siehe Ausgaben/Regel-Block … und
+   firebase/firestore.rules.beispiel). Regeln und diese Attrappe
+   werden immer zusammen geändert.
    Anmeldung und Datenbank laufen nur im Speicher dieser Seite;
    nichts geht an das echte Firebase-Projekt, kein echtes Kind
    wird angefasst.
@@ -72,16 +77,57 @@
     signInWithRedirect: function () { return this.signInWithPopup(); }
   };
 
-  // Vereinfachte Regeln: Ist ATTRAPPE.lehrer gesetzt (Liste von
-  // E-Mail-Adressen), darf nur eine Lehrkraft die ganze Sammlung
-  // "kinder" lesen und dort schreiben oder löschen, und nur sie darf
-  // in "faelle" und "loesungen" schreiben – wie istLehrer() in
-  // firebase/firestore.rules.beispiel.
-  function lehrerPruefen(sammlung, schreiben) {
-    var geschuetzt = sammlung === 'kinder' ||
-      (schreiben && (sammlung === 'faelle' || sammlung === 'loesungen'));
-    if (!A.lehrer || !geschuetzt) return;
-    if (!nutzer || A.lehrer.indexOf(nutzer.email) < 0) throw fehler('permission-denied');
+  // ---------- Regeln (Nachbau) ----------
+  // Lehrkraft: Ist ATTRAPPE.lehrer gesetzt (Liste von E-Mail-Adressen),
+  // darf nur eine Lehrkraft die ganze Sammlung "kinder" lesen und dort
+  // schreiben, und nur sie darf Akten schreiben – wie istLehrer().
+  // Kind: meldet sich mit <code>@<authDomain> an (wie istKind()).
+  function istLehrer() { return !!(A.lehrer && nutzer && A.lehrer.indexOf(nutzer.email) >= 0); }
+  function mailCode() {
+    var dom = '@' + ((A.config && A.config.authDomain) || 'lernplattform-44aa1.firebaseapp.com');
+    var m = nutzer && nutzer.email;
+    return m && m.slice(-dom.length) === dom ? m.slice(0, -dom.length) : null;
+  }
+  function istKind(code) { return mailCode() === code; }
+  function freigeschaltet(code) { return !!code && A.daten['kinder/' + code] !== undefined; }
+
+  // Wie raStandGueltig() im Regel-Block: nur diese Felder, Typen, Obergrenzen
+  var RA_FELDER = ['erledigt', 'stempel', 'zeit', 'eintraege', 'abzeichen', 'angelegt', 'geaendert'];
+  function ganzzahl(x) { return typeof x === 'number' && isFinite(x) && Math.floor(x) === x; }
+  function karte200(x) { return x === undefined || (x && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).length <= 200); }
+  function gueltig(d) {
+    if (!d || typeof d !== 'object') return false;
+    if (Object.keys(d).some(function (k) { return RA_FELDER.indexOf(k) < 0; })) return false;
+    if (!ganzzahl(d.geaendert)) return false;
+    if ('angelegt' in d && !ganzzahl(d.angelegt)) return false;
+    if ('abzeichen' in d && !(typeof d.abzeichen === 'string' && d.abzeichen.length <= 20)) return false;
+    return karte200(d.erledigt) && karte200(d.stempel) && karte200(d.zeit) && karte200(d.eintraege);
+  }
+  A.gueltig = gueltig;
+
+  // op: 'get', 'list', 'write' (set und delete)
+  function lehrerPruefen(sammlung, schreiben, id, daten) {
+    var op = schreiben ? 'write' : (id === undefined ? 'list' : 'get');
+    var nein = function () { throw fehler('permission-denied'); };
+    if (sammlung === 'ra_stand') {
+      if (istLehrer()) return;
+      if (op === 'list' || !istKind(id)) nein();
+      if (op === 'write' && !(freigeschaltet(id) && (daten === null || gueltig(daten)))) nein();
+      if (op === 'write' && daten === null) nein();         // löschen nur die Lehrkraft
+      return;
+    }
+    if (sammlung === 'ra_faelle' || sammlung === 'ra_loesungen') {
+      if (istLehrer()) return;
+      if (op === 'write') { if (A.lehrer) nein(); return; }
+      if (!freigeschaltet(mailCode())) nein();
+      return;
+    }
+    if (sammlung === 'kinder') {
+      if (!A.lehrer) return;
+      if (istLehrer()) return;
+      if (op === 'get' && istKind(id)) return;
+      nein();
+    }
   }
 
   // ---------- Datenbank ----------
@@ -102,6 +148,13 @@
     }
   }
 
+  // So sähe das Dokument nach dem Schreiben aus (für die Regeln, wie request.resource.data)
+  function nachher(pfad, neu, opt) {
+    var erg = (opt && opt.merge) ? kopie(A.daten[pfad] || {}) : {};
+    Object.keys(neu).forEach(function (k) { erg[k] = neu[k] instanceof INC ? 0 : kopie(neu[k]); });
+    return erg;
+  }
+
   function schreiben(pfad, neu, opt) {
     var merge = !!(opt && opt.merge);
     var alt = merge ? (A.daten[pfad] || {}) : {};
@@ -118,11 +171,11 @@
     return {
       id: id, pfad: pfad,
       sammlung: sammlung,
-      get: function () { return bald(function () { A.gelesen.push(pfad); return schnappschuss(pfad); }); },
-      set: function (d, opt) { formatPruefen(d, false); return bald(function () { lehrerPruefen(sammlung, true); schreiben(pfad, d, opt); }); },
+      get: function () { return bald(function () { lehrerPruefen(sammlung, false, id); A.gelesen.push(pfad); return schnappschuss(pfad); }); },
+      set: function (d, opt) { formatPruefen(d, false); return bald(function () { lehrerPruefen(sammlung, true, id, nachher(pfad, d, opt)); schreiben(pfad, d, opt); }); },
       delete: function () {
         return bald(function () {
-          lehrerPruefen(sammlung, true);
+          lehrerPruefen(sammlung, true, id, null);
           delete A.daten[pfad];
           A.schreibvorgaenge.push({ pfad: pfad, geloescht: true });
         });
@@ -161,7 +214,7 @@
     batch: function () {
       var schritte = [];
       return {
-        set: function (ref, d, opt) { formatPruefen(d, false); schritte.push(function () { lehrerPruefen(ref.sammlung, true); schreiben(ref.pfad, d, opt); }); },
+        set: function (ref, d, opt) { formatPruefen(d, false); schritte.push(function () { lehrerPruefen(ref.sammlung, true, ref.id, nachher(ref.pfad, d, opt)); schreiben(ref.pfad, d, opt); }); },
         commit: function () { return bald(function () { schritte.forEach(function (s) { s(); }); }); }
       };
     },
@@ -169,7 +222,7 @@
       return bald(function () {
         return f({
           get: function (ref) { return ref.get(); },
-          set: function (ref, d, opt) { schreiben(ref.pfad, d, opt); }
+          set: function (ref, d, opt) { formatPruefen(d, false); lehrerPruefen(ref.sammlung, true, ref.id, nachher(ref.pfad, d, opt)); schreiben(ref.pfad, d, opt); }
         });
       });
     }
@@ -180,6 +233,11 @@
 
   var authFn = function () { return auth; };
   authFn.GoogleAuthProvider = function () { this.setCustomParameters = function () {}; };
+
+  // Im Testrahmen wird die Seite mit document.write eingesetzt. Dann kommt
+  // kein load-Ereignis mehr, und js/konto-cloud.js wartete 8 s auf die
+  // Firebase-Skripte. Hier sind sie "geladen": Bescheid geben.
+  setTimeout(function () { window.dispatchEvent(new Event('load')); }, 0);
 
   window.firebase = {
     initializeApp: function (cfg) { A.config = cfg; return {}; },

@@ -85,7 +85,7 @@ window.RA = window.RA || {};
             '<input id="code" name="code" autocomplete="off" autocapitalize="characters" ' +
               'autocorrect="off" spellcheck="false" inputmode="text" maxlength="12" ' +
               'aria-describedby="code-hilfe' + (meldung ? ' code-fehler' : '') + '">' +
-            '<p id="code-hilfe" class="klein">8 Zeichen, zum Beispiel K7PM 4XRT</p>' +
+            '<p id="code-hilfe" class="klein">8 Zeichen, zum Beispiel K7PM 4XRT. Es ist derselbe Code wie beim Perlentaucher.</p>' +
             '<p id="code-fehler" class="meldung fehler" role="alert"' + (meldung ? '' : ' hidden') + '>' +
               esc(meldung || '') + '</p>' +
             '<button type="submit" class="knopf"><span class="knopf__text">Los geht’s</span>' +
@@ -167,7 +167,8 @@ window.RA = window.RA || {};
           '<li>Bei „Am Tisch“ zuhören, wenn das Kind seinen Fall erklärt.</li>' +
         '</ul>' +
         '<h3>Daten</h3>' +
-        '<p>Gespeichert werden nur der Vorname, der Zugangscode und der Lernstand. ' +
+        '<p>Die Kinder melden sich mit demselben Code an wie beim Perlentaucher. Ihr Lernstand ist so auf jedem Gerät da. ' +
+          'Gespeichert werden nur der Vorname, der Zugangscode und der Lernstand. ' +
           'Mehr dazu steht unter <a href="datenschutz.html">Datenschutz</a>.</p>' +
       '</details>' +
 
@@ -179,8 +180,9 @@ window.RA = window.RA || {};
         '<p>Bezug: Thüringer Lehrplan für die Grundschule (2026), Deutsch bzw. Sachunterricht. ' +
           'Seitenangaben beziehen sich auf die PDF-Seiten.</p>' +
         '<div id="lehrkraft-akten" aria-live="polite"><p>Die Hinweise zu den Akten werden geladen …</p></div>' +
-        '<p>Kinder freischalten, Auswertung und Sicherung: im <a href="lehrer.html">Lehrerbereich</a> ' +
-          '(nur für Lehrkräfte mit Anmeldung).</p>' +
+        '<p>Akten und Auswertung: im <a href="lehrer.html">Lehrerbereich</a> (nur für Lehrkräfte mit Anmeldung). ' +
+          'Kinder freischalten, Sicherung, Auskunft und Zurücksetzen laufen über den Lehrerbereich des Perlentauchers, ' +
+          'weil die Riff-Akten dieselben Zugangscodes nutzen.</p>' +
       '</details>' +
     '</section>';
   }
@@ -247,6 +249,15 @@ window.RA = window.RA || {};
     } else {
       leiste.hidden = true;
     }
+  });
+
+  // ---------- Die Lehrkraft hat den Stand zurückgesetzt ----------
+  // Das Gerät hat seinen Stand verworfen (js/konto-cloud.js) und fängt leer an.
+  RA.cloud.onNeustart(function () {
+    if (!RA.cloud.angemeldet()) return;
+    if (RA.uhr) RA.uhr.stopp();
+    if (location.hash) location.hash = ''; else startseite();
+    ansagen('Deine Lehrkraft hat deine Riff-Akten neu gestartet. Du fängst von vorn an.');
   });
 
   // ---------- Echte Fensterbreite für den Maßstab --s ----------

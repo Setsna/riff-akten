@@ -19,7 +19,7 @@
 <link rel="preload" href="schriften/libre-caslon-text.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="schriften/andika-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <title>Riff-Akten</title>
-<link rel="stylesheet" href="css/riff-akten.css?v=29">
+<link rel="stylesheet" href="css/riff-akten.css?v=30">
 </head>
 <body>
 <!-- Gemalter Riffgrund, Lichtschacht und Randblasen: nur Schmuck -->
@@ -29,16 +29,20 @@
 <div id="speicherleiste" class="speicherleiste" role="status" hidden></div>
 <div id="app"></div>
 <div id="live" class="unsichtbar" aria-live="polite"></div>
-<!-- Firebase (einzige erlaubte Fremdquelle). Ohne Netz zeigt die App einen Hinweis. -->
+<script src="js/config.js?v=30"></script>
+<script src="js/konto-abgleich.js?v=30"></script>
+<script src="js/konto-speicher.js?v=30"></script>
+<script src="js/konto-cloud.js?v=30"></script>
+<script src="js/merge.js?v=30"></script>
+<script src="js/store.js?v=30"></script>
+<script src="js/cloud.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/buch.js?v=30"></script>
+<script src="js/akten.js?v=30"></script>
+<!-- Firebase (einzige erlaubte Fremdquelle), hinter den eigenen Skripten: Die Seite
+     wartet nicht darauf. Ohne Netz zeigt die App einen Hinweis. -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" integrity="sha384-ZaR6mWzmJtrRibZ1Vm7SoHFr8OXjyAuGAXalGDKqbxFT18oi/z+oZLIRFkpeNor1" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" integrity="sha384-I1LYojsZ5RM1cOda44Z2h42Qa6YfsQ1XkXxREnhp4ueYBR/4d1pG1K+NZM537Vsj" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js" integrity="sha384-Ke0FJhH7LyRqDxZ0wt+/OXV38yfQVu7g9VPEEGjYmB4RVOY/ta04uecRhsMwT7V3" crossorigin="anonymous"></script>
-<script src="js/config.js?v=29"></script>
-<script src="js/merge.js?v=29"></script>
-<script src="js/store.js?v=29"></script>
-<script src="js/cloud.js?v=29"></script>
-<script src="js/app.js?v=29"></script>
-<script src="js/buch.js?v=29"></script>
-<script src="js/akten.js?v=29"></script>
 </body>
 </html>

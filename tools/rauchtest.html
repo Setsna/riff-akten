@@ -54,7 +54,7 @@
   }
 
   var CODE = 'TEST2345';
-  var MAIL = CODE.toLowerCase() + '@riff-akten.firebaseapp.com';
+  var MAIL = CODE.toLowerCase() + '@lernplattform-44aa1.firebaseapp.com';
   var FREMD = 'ZZZZ9999';                       // gültiges Format, nicht freigeschaltet
   var rahmen = document.getElementById('app');
   var ergebnis = window.RAUCHTEST = { fertig: false, ok: 0, fehler: 0, liste: [] };
@@ -175,14 +175,14 @@
   var LEHRKRAFT = 'lehrkraft@example.com';
   function lehrerLaden(extra) {
     var d = grunddaten();
-    d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() - 2 * 86400000 };
+    d['ra_stand/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() - 2 * 86400000 };
     return appLaden(Object.assign({ seite: 'lehrer', daten: d, lehrer: [LEHRKRAFT], googleKonto: LEHRKRAFT }, extra || {}));
   }
   function googleKlick() {
     return warteAuf('Google-Knopf', function () { return q('#google'); }).then(function (k) { k.click(); });
   }
   function aufLehrerListe() {
-    return warteAuf('Kinderliste', function () { return q('#freischalten'); });
+    return warteAuf('Kinderliste', function () { return q('#akte-hochladen'); });
   }
 
   function grunddaten() {
@@ -196,8 +196,8 @@
     var d = grunddaten();
     var fall = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
     fall.stationen.forEach(function (s) { s.aufgaben.forEach(function (a) { if (a.typ === 'merken') a.bedenkzeit = 0.3; }); });
-    d['faelle/demo'] = fall;
-    d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+    d['ra_faelle/demo'] = fall;
+    d['ra_loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
     return d;
   }
   function gelesen(praefix) {
@@ -272,11 +272,14 @@
         });
     }); })
 
-    .then(function () { return test('Fortschritt wird in fortschritt/<code> abgeglichen', function () {
-      return warteAuf('Schreibvorgang', function () { return win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()]; })
+    .then(function () { return test('Fortschritt wird in ra_stand/<code> abgeglichen, ohne Vorname, mit angelegt', function () {
+      return warteAuf('Schreibvorgang', function () { return win().ATTRAPPE.daten['ra_stand/' + CODE.toLowerCase()]; })
         .then(function (d) {
           pruefe(typeof d.geaendert === 'number', 'geaendert fehlt');
-          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'];
+          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen', 'angelegt'];
+          pruefe(typeof d.angelegt === 'number', 'angelegt fehlt');
+          pruefe(!('name' in d) && !/Mila/.test(JSON.stringify(d)), 'Vorname steht in der Datenbank');
+          pruefe(win().ATTRAPPE.gueltig(d), 'Die Attrappe der Regeln lehnt den Stand ab');
           pruefe(d.abzeichen === undefined || typeof d.abzeichen === 'string', 'abzeichen ist kein Text');
           var fremd = Object.keys(d).filter(function (k) { return erlaubt.indexOf(k) < 0; });
           pruefe(!fremd.length, 'Felder, die die Regeln ablehnen würden: ' + fremd.join(', '));
@@ -285,7 +288,7 @@
           return win().RA.cloud.schreiben();
         })
         .then(function () {
-          var d = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
+          var d = win().ATTRAPPE.daten['ra_stand/' + CODE.toLowerCase()];
           pruefe(d.zeit && d.zeit.probe === 42, 'Lernzeit nicht gespeichert: ' + JSON.stringify(d.zeit));
         });
     }); })
@@ -317,17 +320,17 @@
           return win().RA.cloud.schreiben();
         })
         .then(function () {
-          var f = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
+          var f = win().ATTRAPPE.daten['ra_stand/' + CODE.toLowerCase()];
           pruefe(f.abzeichen === 'seestern', 'In der Datenbank: ' + f.abzeichen);
         });
     }); })
 
     .then(function () { return test('Stempel und Lernzeit erscheinen mit Testdaten', function () {
       var w = win();
-      var s = w.RA.store.snapshot();
+      var s = w.RA.store.S.aktiv();
       s.stempel = { pausenbrot: Date.parse('2026-10-02T10:00:00'), schluessel: Date.parse('2026-10-20T10:00:00') };
       s.zeit = { pausenbrot: 1260, schluessel: 2950 };
-      w.RA.store.abgleichUebernehmen(s);
+      w.RA.store.S.speichern();
       w.RA.buch.zeigen();
       pruefe(qa('.stempel__marke').length === 2, qa('.stempel__marke').length + ' statt 2 Stempel');
       pruefe(/2\.10\.2026/.test(q('.stempel__marke').getAttribute('aria-label')), 'Stempel ohne Datum');
@@ -394,7 +397,7 @@
           pruefe(/Die verschwundene Muschel/.test(a.textContent), 'Titel fehlt: ' + a.textContent);
           pruefe(a.getAttribute('href') === '#akte/demo', 'Link: ' + a.getAttribute('href'));
           pruefe(/Genau lesen/.test(text('a.fenster--akte .fenster__thema')), 'Thema fehlt auf der Karte');
-          pruefe(!gelesen('loesungen/'), 'Lösung schon auf der Startseite geladen');
+          pruefe(!gelesen('ra_loesungen/'), 'Lösung schon auf der Startseite geladen');
           barrierefrei('Startseite mit Akte');
         });
     }); })
@@ -411,7 +414,7 @@
           var bild = q('.akte__bild img');
           pruefe(bild && bild.getAttribute('alt'), 'Bild in der Geschichte fehlt oder hat keinen Alt-Text');
           barrierefrei('Akte Station 1');
-          pruefe(!gelesen('loesungen/'), 'Lösung vor dem Prüfen geladen');
+          pruefe(!gelesen('ra_loesungen/'), 'Lösung vor dem Prüfen geladen');
           // Antworten gemischt, fest je Kind (nicht in Datei-Reihenfolge)
           var reihe = qa('#a-1\\.1 .option').map(function (b) { return b.getAttribute('data-wert'); }).join('');
           pruefe(reihe !== 'AB', 'Antworten stehen in Datei-Reihenfolge: ' + reihe);
@@ -423,7 +426,7 @@
           return warteAuf('Rückmeldung', function () { var r = q('.rueckmeldung'); return r && !r.hidden && r; });
         })
         .then(function (r) {
-          pruefe(gelesen('loesungen/demo'), 'Lösung wurde nicht aus loesungen/demo geladen');
+          pruefe(gelesen('ra_loesungen/demo'), 'Lösung wurde nicht aus loesungen/demo geladen');
           pruefe(/Nicht ganz/.test(r.textContent) && /Detektivfrage/.test(r.textContent), 'Rückmeldung: ' + r.textContent);
           pruefe(doc().activeElement === r, 'Fokus nicht auf der Rückmeldung');
           pruefe(/richtig/.test(q('.option[data-wert="A"]').textContent), 'richtige Antwort nicht als Text markiert');
@@ -533,8 +536,8 @@
           return win().RA.cloud.schreiben();
         })
         .then(function () {
-          var d = win().ATTRAPPE.daten['fortschritt/' + CODE.toLowerCase()];
-          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen'];
+          var d = win().ATTRAPPE.daten['ra_stand/' + CODE.toLowerCase()];
+          var erlaubt = ['erledigt', 'stempel', 'zeit', 'eintraege', 'geaendert', 'abzeichen', 'angelegt'];
           var fremd = Object.keys(d).filter(function (k) { return erlaubt.indexOf(k) < 0; });
           pruefe(!fremd.length, 'Felder, die die Regeln ablehnen würden: ' + fremd.join(', '));
           pruefe(d.stempel.demo, 'Stempel nicht in der Datenbank');
@@ -581,7 +584,7 @@
 
     .then(function () { return test('Lösung nicht erreichbar: Hinweis statt Absturz', function () {
       var d = mitDemo();
-      delete d['loesungen/demo'];
+      delete d['ra_loesungen/demo'];
       return appLaden({ daten: d, hash: '#c=' + CODE })
         .then(aufStart)
         .then(function () { win().location.hash = 'akte/demo'; return warteAuf('Station 1', function () { return q('[data-pruefen]'); }); })
@@ -610,14 +613,14 @@
           var lk = text('#lehrkraft-akten');
           pruefe(/Die verschwundene Muschel/.test(lk) && /etwa 15 Minuten/.test(lk) && /PDF S\. 0/.test(lk), 'Hinweise: ' + lk);
           pruefe(/Schwierigkeit: leicht/.test(lk), 'Schwierigkeit fehlt');
-          pruefe(!gelesen('loesungen'), 'Startseite lädt Lösungen');
+          pruefe(!gelesen('ra_loesungen'), 'Startseite lädt Lösungen');
           barrierefrei('Startseite mit Bereich für Erwachsene');
         });
     }); })
 
     .then(function () { return test('Ausgeblendete Akte: nicht in der Liste, auch nicht über den direkten Link', function () {
       var d = mitDemo();
-      d['faelle/demo'].aktiv = false;
+      d['ra_faelle/demo'].aktiv = false;
       return appLaden({ daten: d, hash: '#c=' + CODE })
         .then(aufStart)
         // Fertig geladen: der Platzhalter heißt dann „Die nächste Akte“
@@ -691,8 +694,53 @@
         .then(function () { return win().RA.cloud.anmelden('ABCD2345'); })
         .then(function () {
           pruefe(win().RA.cloud.kind().vorname === 'Ben', 'angemeldet ist ' + win().RA.cloud.kind().vorname);
-          pruefe(/abcd2345$/.test(win().RA.store._schluessel()), 'Speicherplatz gehört nicht zu Ben');
+          pruefe(/^riff-akten-v2[.]ABCD2345$/.test(win().RA.store._schluessel()), 'Speicherplatz gehört nicht zu Ben');
         });
+    }); })
+
+    .then(function () { return test('Zurücksetzen durch die Lehrkraft: Gerät fängt leer an, Meldung', function () {
+      var d = mitDemo();
+      return appLaden({ daten: d, hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () {
+          var w = win();
+          w.RA.store.akteAbschliessen('demo', 6);
+          return w.RA.cloud.schreiben();
+        })
+        .then(function () {
+          var D = win().ATTRAPPE.daten, id = 'ra_stand/' + CODE.toLowerCase();
+          pruefe(D[id] && D[id].stempel.demo, 'Stempel nicht in der Datenbank');
+          var vorher = D[id].angelegt;
+          delete D[id];                          // wie "Riff-Akten zurücksetzen" im Perlentaucher
+          return win().RA.cloud.schreiben().then(function () { return vorher; });
+        })
+        .then(function (vorher) {
+          var w = win(), D = w.ATTRAPPE.daten, f = D['ra_stand/' + CODE.toLowerCase()];
+          pruefe(!Object.keys(w.RA.store.snapshot().stempel).length, 'Gerät hat den alten Stempel behalten');
+          pruefe(f && !Object.keys(f.stempel || {}).length, 'Alter Stand kam zurück in die Datenbank');
+          pruefe(f.angelegt >= vorher, 'angelegt nicht neu');
+          pruefe(w.RA.cloud.kind().angelegt === f.angelegt, '„Im Dienst seit“ nicht aus ra_stand');
+          return warteAuf('Meldung', function () { return /neu gestartet/.test(q('#live').textContent); });
+        });
+    }); })
+
+    .then(function () { return test('Regeln (Attrappe): fremdes Feld, fremdes Kind und Akte schreiben werden abgelehnt', function () {
+      var w = win(), db = w.firebase.firestore(), id = CODE.toLowerCase();
+      function abgelehnt(p, was) {
+        return p.then(function () { throw new Error(was + ' wurde angenommen'); },
+          function (e) { pruefe(e && e.code === 'permission-denied', was + ': ' + (e && e.message)); });
+      }
+      return abgelehnt(db.collection('ra_stand').doc(id).set({ geaendert: 1, quatsch: 1 }), 'fremdes Feld')
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc(id).set({ geaendert: 1.5 }), 'Kommazahl in geaendert'); })
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc(id).set({ geaendert: 1, zeit: [] }), 'zeit als Liste'); })
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc('abcd2345').get(), 'fremden Stand lesen'); })
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc('abcd2345').set({ geaendert: 1 }), 'fremden Stand schreiben'); })
+        .then(function () { return abgelehnt(db.collection('ra_stand').doc(id).delete(), 'eigenen Stand löschen'); })
+        .then(function () {
+          w.ATTRAPPE.lehrer = ['lehrkraft@example.com'];
+          return abgelehnt(db.collection('ra_faelle').doc('neu').set({ titel: 'x' }), 'Akte schreiben als Kind');
+        })
+        .then(function () { return db.collection('ra_stand').doc(id).set({ geaendert: 2, zeit: { demo: 5 } }); });
     }); })
 
     // ================= Lehrerbereich =================
@@ -722,59 +770,21 @@
         .then(function (t) { pruefe(/fremd@example\.com/.test(t) && /istLehrer/.test(t), 'Meldung: ' + t); });
     }); })
 
-    .then(function () { return test('Lehrkraft sieht die Kinderliste mit „zuletzt aktiv“', function () {
+    .then(function () { return test('Lehrkraft sieht die Kinderliste (nur lesen) mit „zuletzt aktiv“', function () {
       return lehrerLaden().then(googleKlick).then(aufLehrerListe).then(function () {
         var zeile = q('tbody tr');
         pruefe(zeile && /Mila/.test(zeile.textContent), 'Mila fehlt');
         pruefe(/TEST-2345/.test(zeile.textContent), 'Code nicht als TEST-2345 angezeigt');
         pruefe(/vor 2 Tagen/.test(zeile.textContent), 'zuletzt aktiv: ' + zeile.textContent);
+        // Kinderverwaltung liegt im Perlentaucher: hier nichts, was "kinder" ändert
+        pruefe(!q('[data-loeschen]') && !q('[data-sperren]') && !q('[data-auskunft]') && !q('#freischalten') &&
+          !q('#neu-anlegen') && !q('#sicherung-laden') && !q('#aufraeumen-suchen'), 'Kinderverwaltung noch im Lehrerbereich der Riff-Akten');
+        pruefe(/Perlentaucher/.test(text('section[aria-labelledby="t-kinder"]')), 'Hinweis auf den Perlentaucher fehlt');
         barrierefrei('Lehrer-Liste');
       });
     }); })
 
-    .then(function () { return test('Freischalten: fehlerhafte Liste speichert nichts, gültige schon', function () {
-      q('#json').value = JSON.stringify([{ vorname: 'Ben', code: 'ABCD2345' }, { vorname: '', code: 'XX' }]);
-      q('#freischalten').click();
-      return warteAuf('Fehler', function () { var m = q('#ergebnis .fehler'); return m && m.textContent; })
-        .then(function (t) {
-          pruefe(/Position 2/.test(t), 'Meldung: ' + t);
-          pruefe(!win().ATTRAPPE.daten['kinder/abcd2345'], 'Ben wurde trotz Fehler gespeichert');
-          q('#json').value = JSON.stringify([{ vorname: 'Ben', code: 'abcd-2345' }, { vorname: 'Mila', code: 'TEST2345' }]);
-          q('#freischalten').click();
-          return warteAuf('Ben in der Liste', function () { return /Ben/.test((q('tbody') || {}).textContent || ''); });
-        })
-        .then(function () {
-          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'].vorname === 'Ben', 'Ben nicht gespeichert');
-          var zeilen = qa('section[aria-labelledby="t-kinder"] tbody tr').length;
-          pruefe(zeilen === 2, 'Mila doppelt oder fehlt: ' + zeilen + ' Zeilen');
-          pruefe(win().ATTRAPPE.daten['kinder/test2345'].angelegt === Date.parse('2026-09-01T08:00:00'),
-            '„Detektiv seit“ von Mila wurde beim erneuten Freischalten überschrieben');
-          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'].angelegt > 0, 'Ben ohne „angelegt“');
-        });
-    }); })
-
-    .then(function () { return test('Sperren: echter Dialog, Escape bricht ab, Bestätigen sperrt', function () {
-      var knopf = q('[data-sperren="abcd2345"]');
-      knopf.click();
-      var dlg = q('#dialog');
-      pruefe(dlg.open, 'Dialog nicht offen');
-      pruefe(dlg.contains(doc().activeElement), 'Fokus nicht im Dialog');
-      dlg.dispatchEvent(new (win().Event)('cancel'));
-      dlg.close();                                  // wie Escape
-      // Das close-Ereignis kommt verzögert; erst danach setzt die App den Fokus zurück.
-      return warteAuf('Fokus zurück auf dem Sperren-Knopf', function () {
-        return !dlg.open && doc().activeElement === knopf;
-      }, 3000).then(function () {
-        pruefe(win().ATTRAPPE.daten['kinder/abcd2345'], 'Escape hat trotzdem gesperrt');
-        q('[data-sperren="abcd2345"]').click();
-        q('#dialog-ja').click();
-        return warteAuf('Ben gesperrt', function () { return !win().ATTRAPPE.daten['kinder/abcd2345']; });
-      }).then(function () {
-        return warteAuf('Liste neu', function () { return q('tbody') && !/Ben/.test(q('tbody').textContent); });
-      });
-    }); })
-
-    .then(function () { return test('Akte hochladen: Prüfung hält Fehler auf, gültige Datei landet in faelle und loesungen', function () {
+    .then(function () { return test('Akte hochladen: Prüfung hält Fehler auf, gültige Datei landet in ra_faelle und ra_loesungen', function () {
       pruefe(q('#akte-hochladen'), 'Kein Knopf „Akte prüfen und hochladen“');
       pruefe(/Noch keine Akten/.test(text('section[aria-labelledby="t-akten"] tbody')), 'Aktenliste nicht leer');
       // Lösung versehentlich im sichtbaren Teil, und eine Lösung fehlt
@@ -788,7 +798,7 @@
           pruefe(/nichts gespeichert/.test(t), 'Meldung: ' + t);
           pruefe(/Lösungen gehören nur in/.test(t), 'Lösung im sichtbaren Teil nicht erkannt');
           pruefe(/2\.1: Lösung/.test(t), 'fehlende Lösung 2.1 nicht erkannt');
-          pruefe(!win().ATTRAPPE.daten['faelle/demo'], 'Akte trotz Fehler gespeichert');
+          pruefe(!win().ATTRAPPE.daten['ra_faelle/demo'], 'Akte trotz Fehler gespeichert');
           q('#akte-json').value = JSON.stringify({ id: 'demo', fall: window.DEMO_FALL.fall, loesung: window.DEMO_FALL.loesung });
           q('#akte-hochladen').click();
           return warteAuf('Akte in der Liste', function () {
@@ -797,9 +807,9 @@
         })
         .then(function () {
           var D = win().ATTRAPPE.daten;
-          pruefe(D['faelle/demo'] && D['faelle/demo'].aktiv === true, 'faelle/demo fehlt oder nicht sichtbar');
-          pruefe(D['loesungen/demo'] && D['loesungen/demo'].aufgaben['1.1'], 'loesungen/demo fehlt');
-          pruefe(JSON.stringify(D['faelle/demo']).indexOf('"richtig"') < 0, 'Lösung steckt in faelle/demo');
+          pruefe(D['ra_faelle/demo'] && D['ra_faelle/demo'].aktiv === true, 'ra_faelle/demo fehlt oder nicht sichtbar');
+          pruefe(D['ra_loesungen/demo'] && D['ra_loesungen/demo'].aufgaben['1.1'], 'ra_loesungen/demo fehlt');
+          pruefe(JSON.stringify(D['ra_faelle/demo']).indexOf('"richtig"') < 0, 'Lösung steckt in faelle/demo');
           barrierefrei('Lehrerbereich mit Akten');
         });
     }); })
@@ -807,14 +817,14 @@
     .then(function () { return test('Auswertung: Stand, Lernzeit, Selbsteinschätzung und Eintrag je Kind', function () {
       var d = grunddaten();
       d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: 1 };
-      d['faelle/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
-      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
-      d['fortschritt/' + CODE.toLowerCase()] = {
+      d['ra_faelle/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
+      d['ra_loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+      d['ra_stand/' + CODE.toLowerCase()] = {
         erledigt: { demo: Date.parse('2026-11-05T10:00:00') }, stempel: { demo: Date.parse('2026-11-05T10:00:00') },
         zeit: { demo: 1260 }, geaendert: Date.now(),
         eintraege: { demo: { station: 6, selbst: { '3.2': 0 }, eintrag: { '6.1': 'K2', '6.2': 'gut' }, ts: 1 } }
       };
-      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: { demo: 300 }, geaendert: Date.now(),
+      d['ra_stand/abcd2345'] = { erledigt: {}, stempel: {}, zeit: { demo: 300 }, geaendert: Date.now(),
         eintraege: { demo: { station: 2, ts: 1 } } };
       return lehrerLaden({ daten: d })
         .then(googleKlick)
@@ -837,171 +847,11 @@
         });
     }); })
 
-    .then(function () { return test('Datenschutz: Auskunft als Datei, endgültig Löschen mit Rückfrage', function () {
-      var d = grunddaten();
-      d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: Date.now() };
-      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: { demo: 60 }, eintraege: {}, abzeichen: 'qualle', geaendert: Date.now() };
-      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() };
-      return lehrerLaden({ daten: d })
-        .then(googleKlick)
-        .then(function () { return warteAuf('Knöpfe', function () { return q('[data-auskunft="test2345"]'); }); })
-        .then(function (b) {
-          win().HTMLAnchorElement.prototype.click = function () {};   // keine echte Datei im Test
-          b.click();
-          var dl = win().RA.lehrer.letzterDownload();
-          pruefe(dl && /^Auskunft-Mila-\d{4}-\d\d-\d\d\.json$/.test(dl.name), 'Dateiname: ' + (dl && dl.name));
-          pruefe(dl.daten.kind.code === 'TEST-2345' && dl.daten.kind.vorname === 'Mila', 'Kind fehlt in der Auskunft');
-          pruefe(dl.daten.lernstand && dl.daten.lernstand.abzeichen === 'qualle', 'Lernstand fehlt in der Auskunft');
-          pruefe(/test2345@/.test(dl.daten.hinweise.join(' ')), 'Hinweis auf das Anmeldekonto fehlt');
-          var lk = q('[data-loeschen="abcd2345"]');
-          lk.click();
-          pruefe(q('#dialog').open && /Ben/.test(text('#dialog-text')), 'Rückfrage fehlt oder ohne Namen');
-          q('#dialog-nein').click();
-          pruefe(win().ATTRAPPE.daten['kinder/abcd2345'], 'Abbrechen hat trotzdem gelöscht');
-          q('[data-loeschen="abcd2345"]').click();
-          q('#dialog-ja').click();
-          return warteAuf('Ben gelöscht', function () {
-            var D = win().ATTRAPPE.daten;
-            return !D['kinder/abcd2345'] && !D['fortschritt/abcd2345'];
-          });
-        })
-        .then(function () {
-          pruefe(win().ATTRAPPE.daten['kinder/' + CODE.toLowerCase()], 'Mila wurde mitgelöscht');
-          return warteAuf('Liste ohne Ben', function () {
-            var tb = q('section[aria-labelledby="t-kinder"] tbody');
-            return tb && !/Ben/.test(tb.textContent);
-          });
-        });
-    }); })
-
-    .then(function () { return test('Ein Kind anlegen: zufälliger gültiger Code, Link angezeigt', function () {
-      q('#neu-vorname').value = '';
-      q('#neu-anlegen').click();
-      pruefe(/Vornamen/.test(text('#neu-ergebnis')), 'Leerer Vorname nicht abgefangen');
-      q('#neu-vorname').value = 'Ella';
-      q('#neu-anlegen').click();
-      return warteAuf('Ergebnis', function () { return /ist freigeschaltet/.test(text('#neu-ergebnis')) && text('#neu-ergebnis'); })
-        .then(function (t) {
-          var m = /Code: ([A-Z0-9]{4})-([A-Z0-9]{4})/.exec(t);
-          pruefe(m, 'Kein Code im Ergebnis: ' + t);
-          var code = (m[1] + m[2]);
-          var A = win().RA.config.code.alphabet;
-          pruefe(code.split('').every(function (c) { return A.indexOf(c) >= 0; }), 'Code mit ungültigem Zeichen: ' + code);
-          var doc = win().ATTRAPPE.daten['kinder/' + code.toLowerCase()];
-          pruefe(doc && doc.vorname === 'Ella' && doc.angelegt > 0, 'Ella nicht gespeichert');
-          pruefe(new RegExp('#c=' + code).test(t), 'Link fehlt');
-          pruefe(/Ella/.test(text('section[aria-labelledby="t-kinder"] tbody')), 'Ella nicht in der Liste');
-        });
-    }); })
-
-    .then(function () { return test('Aufräumen: findet nur lange inaktive Kinder, löscht nach Rückfrage', function () {
-      var d = grunddaten();
-      var alt = Date.now() - 400 * 86400000;
-      d['kinder/abcd2345'] = { vorname: 'Ben', angelegt: alt };
-      d['fortschritt/abcd2345'] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: alt };
-      d['kinder/efgh2345'] = { vorname: 'Pia', angelegt: alt };   // nie angemeldet
-      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, geaendert: Date.now() };
-      return lehrerLaden({ daten: d })
-        .then(googleKlick)
-        .then(function () { return warteAuf('Aufräumen', function () { return q('#aufraeumen-suchen'); }); })
-        .then(function (b) {
-          b.click();
-          var t = text('#aufraeumen-ergebnis');
-          pruefe(/2 Kinder/.test(t) && /Ben/.test(t) && /Pia/.test(t), 'Treffer: ' + t);
-          pruefe(!/Mila/.test(t), 'Aktive Mila steht in der Liste');
-          q('#aufraeumen-loeschen').click();
-          pruefe(q('#dialog').open, 'Keine Rückfrage');
-          q('#dialog-ja').click();
-          return warteAuf('gelöscht', function () {
-            var D = win().ATTRAPPE.daten;
-            return !D['kinder/abcd2345'] && !D['kinder/efgh2345'] && !D['fortschritt/abcd2345'];
-          });
-        })
-        .then(function () {
-          pruefe(win().ATTRAPPE.daten['kinder/' + CODE.toLowerCase()], 'Mila wurde mitgelöscht');
-          barrierefrei('Lehrerbereich mit Datenschutz-Abschnitten');
-        });
-    }); })
-
-    .then(function () { return test('Sicherung: alle Bereiche in einer Datei, auch Lernstand gesperrter Kinder', function () {
-      var d = grunddaten();
-      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: {}, stempel: {}, zeit: { demo: 100 }, eintraege: {}, geaendert: 5 };
-      d['fortschritt/zzzz2345'] = { erledigt: {}, stempel: {}, zeit: { demo: 50 }, eintraege: {}, geaendert: 4 };  // gesperrt
-      d['faelle/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.fall));
-      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
-      return lehrerLaden({ daten: d })
-        .then(googleKlick)
-        .then(function () { return warteAuf('Sicherung', function () { return q('#sicherung-laden'); }); })
-        .then(function (b) {
-          win().HTMLAnchorElement.prototype.click = function () {};
-          b.click();
-          return warteAuf('Download', function () { return win().RA.lehrer.letzterDownload(); });
-        })
-        .then(function (dl) {
-          pruefe(/^Riff-Akten-Sicherung-\d{4}-\d\d-\d\d\.json$/.test(dl.name), 'Dateiname: ' + dl.name);
-          var D = dl.daten.daten;
-          pruefe(Object.keys(D.kinder).length === 1 && Object.keys(D.fortschritt).length === 2, 'Kinder/Lernstände fehlen');
-          pruefe(D.faelle.demo && D.loesungen.demo, 'Akte oder Lösung fehlt');
-          pruefe(D.fortschritt.zzzz2345, 'Lernstand des gesperrten Kindes fehlt');
-          window.SICHERUNG_TEST = JSON.stringify(dl.daten);
-        });
-    }); })
-
-    .then(function () { return test('Wiederherstellen: ergänzt Fehlendes, überschreibt nur mit Häkchen', function () {
-      var D = win().ATTRAPPE.daten;
-      delete D['kinder/' + CODE.toLowerCase()];
-      delete D['faelle/demo'];
-      D['fortschritt/' + CODE.toLowerCase()].zeit.demo = 999;     // neuerer Stand
-      function dateiWaehlen(text) {
-        var w = win(), dt = new w.DataTransfer();
-        dt.items.add(new w.File([text], 'sicherung.json', { type: 'application/json' }));
-        var inp = q('#wieder-datei');
-        inp.files = dt.files;
-        inp.dispatchEvent(new w.Event('change'));
-      }
-      dateiWaehlen('{"art":"etwas anderes"}');
-      return warteAuf('Fehler bei falscher Datei', function () { return /keine Sicherung/.test(text('#wieder-ergebnis')); })
-        .then(function () {
-          pruefe(q('#wieder-start').disabled, 'Wiederherstellen trotz falscher Datei möglich');
-          dateiWaehlen(window.SICHERUNG_TEST);
-          return warteAuf('gelesen', function () { return !q('#wieder-start').disabled; });
-        })
-        .then(function () {
-          pruefe(/1 Kinder, 2 Lernstände, 1 Akten/.test(text('#wieder-ergebnis')), 'Zusammenfassung: ' + text('#wieder-ergebnis'));
-          q('#wieder-start').click();
-          return warteAuf('Rückfrage', function () { return q('#dialog').open; });
-        })
-        .then(function () {
-          pruefe(/2 Einträge werden ergänzt/.test(text('#dialog-text')), 'Rückfrage: ' + text('#dialog-text'));
-          q('#dialog-ja').click();
-          return warteAuf('ergänzt', function () { return D['kinder/' + CODE.toLowerCase()] && D['faelle/demo']; });
-        })
-        .then(function () {
-          pruefe(D['fortschritt/' + CODE.toLowerCase()].zeit.demo === 999, 'Neuerer Lernstand wurde ohne Häkchen überschrieben');
-          return warteAuf('neu gezeichnet', function () { return q('#wieder-datei') && /wiederhergestellt/.test(text('#wieder-ergebnis')); });
-        })
-        .then(function () {
-          dateiWaehlen(window.SICHERUNG_TEST);
-          return warteAuf('gelesen', function () { return !q('#wieder-start').disabled; });
-        })
-        .then(function () {
-          q('#wieder-ueberschreiben').checked = true;
-          q('#wieder-start').click();
-          return warteAuf('Rückfrage', function () { return q('#dialog').open; });
-        })
-        .then(function () {
-          pruefe(/überschrieben/.test(text('#dialog-text')), 'Rückfrage nennt Überschreiben nicht');
-          q('#dialog-ja').click();
-          return warteAuf('überschrieben', function () { return D['fortschritt/' + CODE.toLowerCase()].zeit.demo === 100; });
-        })
-        .then(function () { barrierefrei('Lehrerbereich mit Sicherung'); });
-    }); })
-
     .then(function () { return test('Akten verwalten: aus-/einblenden, herunterladen (gültige Fall-Datei), löschen', function () {
       var d = grunddaten();
-      d['faelle/demo'] = Object.assign({ aktiv: true }, JSON.parse(JSON.stringify(window.DEMO_FALL.fall)));
-      d['loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
-      d['fortschritt/' + CODE.toLowerCase()] = { erledigt: { demo: 1 }, stempel: { demo: 1 }, zeit: { demo: 60 }, eintraege: {}, geaendert: Date.now() };
+      d['ra_faelle/demo'] = Object.assign({ aktiv: true }, JSON.parse(JSON.stringify(window.DEMO_FALL.fall)));
+      d['ra_loesungen/demo'] = JSON.parse(JSON.stringify(window.DEMO_FALL.loesung));
+      d['ra_stand/' + CODE.toLowerCase()] = { erledigt: { demo: 1 }, stempel: { demo: 1 }, zeit: { demo: 60 }, eintraege: {}, geaendert: Date.now() };
       var D;
       return lehrerLaden({ daten: d })
         .then(googleKlick)
@@ -1012,14 +862,14 @@
           b.click();
           return warteAuf('ausgeblendet', function () {
             var k = q('[data-akte-sichtbar="demo"]');
-            return D['faelle/demo'].aktiv === false && k && /Einblenden/.test(k.textContent) && k;
+            return D['ra_faelle/demo'].aktiv === false && k && /Einblenden/.test(k.textContent) && k;
           });
         })
         .then(function (k) {
           pruefe(/nein \(ausgeblendet\)/.test(text('section[aria-labelledby="t-akten"] tbody')), 'Status in der Tabelle fehlt');
-          pruefe(D['faelle/demo'].titel === 'Die verschwundene Muschel', 'Ausblenden hat die Akte verändert');
+          pruefe(D['ra_faelle/demo'].titel === 'Die verschwundene Muschel', 'Ausblenden hat die Akte verändert');
           k.click();
-          return warteAuf('eingeblendet', function () { return D['faelle/demo'].aktiv === true; });
+          return warteAuf('eingeblendet', function () { return D['ra_faelle/demo'].aktiv === true; });
         })
         .then(function () {
           return warteAuf('neu gezeichnet', function () { return q('[data-akte-laden="demo"]'); });
@@ -1044,10 +894,10 @@
           q('[data-akte-loeschen="demo"]').click();
           pruefe(q('#dialog').open && /Stempel und Lernzeit/.test(text('#dialog-text')), 'Rückfrage fehlt');
           q('#dialog-ja').click();
-          return warteAuf('gelöscht', function () { return !D['faelle/demo'] && !D['loesungen/demo']; });
+          return warteAuf('gelöscht', function () { return !D['ra_faelle/demo'] && !D['ra_loesungen/demo']; });
         })
         .then(function () {
-          pruefe(D['fortschritt/' + CODE.toLowerCase()].stempel.demo, 'Stempel des Kindes wurde mitgelöscht');
+          pruefe(D['ra_stand/' + CODE.toLowerCase()].stempel.demo, 'Stempel des Kindes wurde mitgelöscht');
           barrierefrei('Lehrerbereich Akten verwalten');
         });
     }); })

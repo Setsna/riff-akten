@@ -1,93 +1,96 @@
 /* ==========================================================
-   Riff-Akten – Fortschritt von zwei Geräten zusammenführen
+   Riff-Akten – der Stand eines Kindes und wie zwei Stände
+   zusammengeführt werden (seit dem Konto-Umbau, 14.11.2026)
 
-   Ein Kind arbeitet nachmittags zu Hause und am nächsten Morgen auf
-   dem Schul-iPad, das noch offen lag. Der zweite Stand darf den
-   ersten nicht einfach ersetzen.
+   Der Stand liegt im Browser (js/konto-speicher.js) und in der
+   Datenbank unter ra_stand/<code> (js/konto-cloud.js).
 
-   Dreiwege-Vergleich (Idee aus Perlentaucher, js/merge.js):
-     BASIS   der Stand, den dieses Gerät zuletzt abgeglichen hat
-     LOKAL   was dieses Gerät seitdem daraus gemacht hat
-     FERN    was gerade in der Datenbank steht
+     erledigt   { akte: Zeitpunkt }  Vereinigung, der frühere gilt
+     stempel    { akte: Zeitpunkt }  Vereinigung, der frühere gilt
+     zeit       { akte: Sekunden }   je Akte: fern + eigener Zuwachs
+     eintraege  { akte: { station, eintrag, selbst, ts } }
+                                     je Akte gewinnt der jüngere (ts)
+     abzeichen  Kennung              hier geändert gewinnt, sonst fern
+     angelegt   Zeitpunkt            der frühere ("Im Dienst seit")
+     geaendert  Zeitpunkt            der spätere
 
-   Regeln je Feld:
-     erledigt, stempel   Vereinigung, der frühere Zeitpunkt gilt
-                         (was einmal geschafft ist, bleibt geschafft)
-     zeit                Zähler: FERN + (LOKAL − BASIS)
-     eintraege           je Eintrag gewinnt der jüngere (Feld ts)
-     abzeichen           hat dieses Gerät es seit BASIS geändert,
-                         gilt LOKAL, sonst FERN
-     geaendert           das Maximum
-
-   Bewusst ohne Firebase, damit es sich ohne Netz testen lässt.
+   Der Vorname steht nie in der Datenbank, nur im Browser.
+   Bausteine aus js/konto-abgleich.js (Lernlagune-Konto, Baukasten).
    ========================================================== */
 window.RA = window.RA || {};
 
 (function () {
   'use strict';
 
-  function zahl(x) { return typeof x === 'number' && isFinite(x) ? x : 0; }
-  function obj(x) { return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; }
+  var A = window.LagunenKonto.abgleich;
+  var ABZEICHEN_MAX = 20;
 
-  function alleSchluessel(maps) {
-    var s = {};
-    maps.forEach(function (m) { Object.keys(obj(m)).forEach(function (k) { s[k] = 1; }); });
-    return Object.keys(s);
+  function abzeichenOk(x) { return typeof x === 'string' && x.length <= ABZEICHEN_MAX; }
+
+  // Karte akte -> Zeitpunkt oder Sekunden: nur positive Zahlen
+  function zahlen(roh) {
+    var raus = {}, k = A.karte(roh);
+    Object.keys(k).forEach(function (id) { var n = A.zahl(k[id]); if (n) raus[id] = n; });
+    return raus;
   }
-
-  // Vereinigung, der frühere Zeitpunkt gilt.
-  function vereinigt(lokal, fern) {
-    lokal = obj(lokal); fern = obj(fern);
-    var raus = {};
-    alleSchluessel([lokal, fern]).forEach(function (k) {
-      var a = zahl(lokal[k]), b = zahl(fern[k]);
-      raus[k] = (a && b) ? Math.min(a, b) : (a || b);
-    });
+  // Einträge: nur Objekte
+  function eintraege(roh) {
+    var raus = {}, k = A.karte(roh);
+    Object.keys(k).forEach(function (id) { if (A.istObjekt(k[id])) raus[id] = A.kopie(k[id]); });
     return raus;
   }
 
-  // Zähler: eigenen Zuwachs auf den fernen Stand legen, nie unter null.
-  function zaehler(basis, lokal, fern) {
-    basis = obj(basis); lokal = obj(lokal); fern = obj(fern);
-    var raus = {};
-    alleSchluessel([basis, lokal, fern]).forEach(function (k) {
-      var n = Math.max(0, zahl(fern[k]) + (zahl(lokal[k]) - zahl(basis[k])));
-      if (n) raus[k] = n;
-    });
-    return raus;
+  function leer() {
+    return { erledigt: {}, stempel: {}, zeit: {}, eintraege: {}, abzeichen: '' };
   }
 
-  // Einträge: je Schlüssel der jüngere.
-  function juengere(lokal, fern) {
-    lokal = obj(lokal); fern = obj(fern);
-    var raus = {};
-    alleSchluessel([lokal, fern]).forEach(function (k) {
-      var a = lokal[k], b = fern[k];
-      if (!a) raus[k] = b;
-      else if (!b) raus[k] = a;
-      else raus[k] = zahl(a.ts) >= zahl(b.ts) ? a : b;
-    });
-    return raus;
-  }
-
-  // Abzeichen: ein einzelner Wert. Die eigene Änderung gewinnt, sonst
-  // bleibt, was in der Datenbank steht. Nie undefined (Firestore).
-  function wahl(basis, lokal, fern) {
-    var t = function (x) { return typeof x === 'string' ? x : ''; };
-    return t(lokal) !== t(basis) ? t(lokal) : (t(fern) || t(lokal));
-  }
-
-  function spielstand(basis, lokal, fern) {
-    basis = obj(basis); lokal = obj(lokal); fern = obj(fern);
+  function normalisiere(roh) {
+    roh = A.karte(roh);
     return {
-      erledigt: vereinigt(lokal.erledigt, fern.erledigt),
-      stempel: vereinigt(lokal.stempel, fern.stempel),
-      zeit: zaehler(basis.zeit, lokal.zeit, fern.zeit),
-      eintraege: juengere(lokal.eintraege, fern.eintraege),
-      abzeichen: wahl(basis.abzeichen, lokal.abzeichen, fern.abzeichen),
-      geaendert: Math.max(zahl(lokal.geaendert), zahl(fern.geaendert))
+      erledigt: zahlen(roh.erledigt),
+      stempel: zahlen(roh.stempel),
+      zeit: zahlen(roh.zeit),
+      eintraege: eintraege(roh.eintraege),
+      abzeichen: abzeichenOk(roh.abzeichen) ? roh.abzeichen : ''
     };
   }
 
-  RA.mische = { spielstand: spielstand };
+  // Lernzeit je Akte: für jede Akte fern + Zuwachs seit dem letzten Abgleich
+  function zeitMischen(basis, lokal, fern) {
+    var b = A.karte(basis), l = A.karte(lokal), f = A.karte(fern), raus = {};
+    var ids = {};
+    [b, l, f].forEach(function (m) { Object.keys(m).forEach(function (k) { ids[k] = 1; }); });
+    Object.keys(ids).forEach(function (id) {
+      var n = A.zuwachs(b[id], l[id], f[id]);
+      if (n) raus[id] = n;
+    });
+    return raus;
+  }
+
+  function mische(basis, lokal, fern) {
+    var b = A.karte(basis), l = A.karte(lokal), f = A.karte(fern);
+    var aus = {
+      erledigt: A.vereinigeFrueh(l.erledigt, f.erledigt),
+      stempel: A.vereinigeFrueh(l.stempel, f.stempel),
+      zeit: zeitMischen(b.zeit, l.zeit, f.zeit),
+      eintraege: A.neuererGewinnt(l.eintraege, f.eintraege, 'ts'),
+      abzeichen: A.hierGeaendert(b.abzeichen, l.abzeichen, f.abzeichen, abzeichenOk) || '',
+      geaendert: A.spaeter(l.geaendert, f.geaendert)
+    };
+    var angelegt = A.frueher(l.angelegt, f.angelegt);
+    if (angelegt) aus.angelegt = angelegt;
+    return aus;
+  }
+
+  // Die Lehrkraft hat den Stand im Perlentaucher zurückgesetzt:
+  // Das Gerät fängt leer an. Das Abzeichen bleibt (keine Leistung).
+  function neuanfang(lokal, jetzt) {
+    var s = leer();
+    s.abzeichen = abzeichenOk(A.karte(lokal).abzeichen) ? lokal.abzeichen : '';
+    s.angelegt = jetzt;
+    s.geaendert = jetzt;
+    return s;
+  }
+
+  RA.mische = { leer: leer, normalisiere: normalisiere, mische: mische, neuanfang: neuanfang, spielstand: mische };
 })();

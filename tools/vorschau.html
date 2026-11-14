@@ -39,7 +39,7 @@
 
   var SPEICHER = 'riff-akten-vorschau-attrappe';
   var CODE = 'TEST2345';
-  var MAIL = CODE.toLowerCase() + '@riff-akten.firebaseapp.com';
+  var MAIL = CODE.toLowerCase() + '@lernplattform-44aa1.firebaseapp.com';
   var p = new URLSearchParams(location.search);
 
   if (p.has('neu')) { try { localStorage.clear(); } catch (e) {} }
@@ -52,8 +52,8 @@
   }
   // Demo-Fall (tools/test/demo-fall.js), echte Fälle gibt es nur in Firestore
   var D = window.DEMO_FALL;
-  szen.daten['faelle/' + D.id] = D.fall;
-  szen.daten['loesungen/' + D.id] = D.loesung;
+  szen.daten['ra_faelle/' + D.id] = D.fall;
+  szen.daten['ra_loesungen/' + D.id] = D.loesung;
   window.VORSCHAU_SZENARIO = szen;
 
   fetch('/index.html?t=' + Date.now()).then(function (r) { return r.text(); }).then(function (html) {
