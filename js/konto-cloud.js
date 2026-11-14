@@ -40,13 +40,15 @@
     unlesbar: 'Dein gespeicherter Stand konnte nicht gelesen werden. Bitte sag deiner Lehrkraft Bescheid.'
   };
 
-  /* Der Aufkleber führt auf die Seite mit #c=CODE am Ende, wie beim Perlentaucher. */
-  const ort = () => location.hash + location.search;
+  /* Der Aufkleber führt auf die Seite mit #c=CODE am Ende, wie beim Perlentaucher.
+     Gelesen wird nur der Teil hinter dem #: Der bleibt im Browser. Ein Code hinter einem ? ginge mit dem
+     Seitenaufruf an den Server und wird deshalb nicht angenommen. */
+  const ort = () => location.hash;
   LK.adresse = {
-    code() { const m = /[#&?]c=([A-Za-z0-9]{8})(?![A-Za-z0-9])/.exec(ort()); return m ? m[1].toUpperCase() : null; },
-    spur: () => /[#&?]c=/.test(ort()),
+    code() { const m = /[#&]c=([A-Za-z0-9]{8})(?![A-Za-z0-9])/.exec(ort()); return m ? m[1].toUpperCase() : null; },
+    spur: () => /[#&]c=/.test(ort()),
     /* Den Code aus der Adresszeile nehmen, damit er nicht im Verlauf oder auf einem Bildschirmfoto bleibt */
-    saeubern() { try { if (/[#&?]c=/.test(ort())) history.replaceState(null, '', location.pathname); } catch (e) { /* dann bleibt er stehen */ } }
+    saeubern() { try { if (/[#&]c=/.test(ort())) history.replaceState(null, '', location.pathname); } catch (e) { /* dann bleibt er stehen */ } }
   };
 
   LK.cloud = function (opt) {
