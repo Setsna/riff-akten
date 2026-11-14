@@ -694,7 +694,7 @@
         .then(function () { return win().RA.cloud.anmelden('ABCD2345'); })
         .then(function () {
           pruefe(win().RA.cloud.kind().vorname === 'Ben', 'angemeldet ist ' + win().RA.cloud.kind().vorname);
-          pruefe(/^riff-akten-v2[.]ABCD2345$/.test(win().RA.store._schluessel()), 'Speicherplatz gehört nicht zu Ben');
+          pruefe(win().RA.store._schluessel() === 'riff-akten-v2.k' + win().LagunenKonto.kennung('ABCD2345') && !/ABCD2345/i.test(win().RA.store._schluessel()), 'Speicherplatz gehört nicht zu Ben oder nennt den Code');
         });
     }); })
 
