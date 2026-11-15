@@ -145,7 +145,7 @@ window.RA = window.RA || {};
       '<h2 id="t-erwachsene" class="unsichtbar">Für Erwachsene</h2>' +
 
       '<details class="erwachsene__teil">' +
-        '<summary>Für Eltern und Lehrkräfte: So funktionieren die Riff-Akten</summary>' +
+        '<summary>Für Eltern und Lehrkräfte: So geht’s</summary>' +
         '<p>Die Riff-Akten sind eine Lernplattform für die Klassen 3 und 4. Die Kinder lösen kleine, harmlose Fälle: ' +
           'Sie lesen eine Fallakte, lesen und hören Hinweise, ordnen sie und beantworten die Detektivfrage. ' +
           'Das Detektiv-Thema ist die Verpackung. Im Mittelpunkt stehen genaues Lesen, Zuhören und Begründen ' +
@@ -173,7 +173,7 @@ window.RA = window.RA || {};
       '</details>' +
 
       '<details class="erwachsene__teil">' +
-        '<summary>Für Lehrkräfte: Einsatz im Unterricht und Lehrplanbezug</summary>' +
+        '<summary>Für Lehrkräfte: Unterricht und Lehrplan</summary>' +
         '<p>Eine Akte passt gut in eine Unterrichtsstunde. Die Kinder arbeiten allein oder zu zweit am iPad; ' +
           'die Station „Am Tisch“ braucht ein zweites Kind. Lösungen werden erst beim Prüfen geladen und stehen ' +
           'nicht im Quelltext der Seite.</p>' +
