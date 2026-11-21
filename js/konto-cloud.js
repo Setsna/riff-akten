@@ -22,9 +22,19 @@
        speicher: S,                                      // LagunenKonto.speicher(…) oder etwas mit derselben Form
        mische: (basis, lokal, fern) => stand,
        neuanfang: (lokal, jetzt) => stand,               // leerer Stand nach dem Zurücksetzen durch die Lehrkraft
-       brauchtAngaben: false                             // true: Beim allerersten Anmelden fragt die Seite etwas ab
-     });                                                 //       (z. B. die Klasse) und ruft dann cloud.anlegen(angaben)
-   Diese Datei zeigt nichts an. Was das Kind sieht, macht die Plattform. */
+       brauchtAngaben: false,                            // true: Beim allerersten Anmelden fragt die Seite etwas ab
+                                                         //       (z. B. die Klasse) und ruft dann cloud.anlegen(angaben)
+       freigabe: 'xx'                                    // Schlüssel im Lehrerbereich (PLATTFORMEN in js/lehrer.js des
+     });                                                 // Perlentauchers), z. B. 'kieselwaage'. Ohne: keine Freigabe-Prüfung.
+   Diese Datei zeigt nichts an. Was das Kind sieht, macht die Plattform.
+
+   Freigabe (seit 21.11.2026, Spec „Plattform-Freigabe“, Etappe 3): Nach der Code-Eingabe liest das Modul
+   oeffentlich/plattformen. Steht dort für opt.freigabe ausdrücklich false, ist die Plattform für die Klasse zu:
+   Das Kind wird wieder abgemeldet, sein Stand bleibt unberührt, das Ergebnis ist { ok: false, zu: true, grund }.
+   Fehlt das Dokument oder der Eintrag, gibt es einen Fehler, dauert es zu lange oder ist kein Netz da: offen.
+   Ein Kind mit testkind: true in kinder/<code> ist nie ausgesperrt. Ohne Netz auf dem Gerät weiterarbeiten
+   geht weiter; geprüft wird beim nächsten Start mit Netz, nicht beim stillen Nachholen (wiederNetz).
+   Das ist eine Sperre für Kinder im Browser, kein technischer Schutz. */
 (() => {
   'use strict';
   const LK = window.LagunenKonto = window.LagunenKonto || {};
@@ -37,7 +47,8 @@
     netz: 'Gerade gibt es kein Internet. Versuch es später noch einmal.',
     oft: 'Das waren zu viele Versuche. Warte kurz und versuch es dann noch einmal.',
     sonst: 'Die Anmeldung hat nicht geklappt. Bitte sag deiner Lehrkraft Bescheid.',
-    unlesbar: 'Dein gespeicherter Stand konnte nicht gelesen werden. Bitte sag deiner Lehrkraft Bescheid.'
+    unlesbar: 'Dein gespeicherter Stand konnte nicht gelesen werden. Bitte sag deiner Lehrkraft Bescheid.',
+    zu: 'Bald offen! Deine Lehrkraft sagt dir, wann es hier losgeht.'   /* Plattform gesperrt (Ingo, 21.11.2026) */
   };
 
   /* Der Aufkleber führt auf die Seite mit #c=CODE am Ende, wie beim Perlentaucher.
@@ -59,6 +70,7 @@
     const NOCHMAL = () => opt.nochmalMs || 8000;              /* ohne Netz: bis zum nächsten Versuch */
     const LADE_WARTE = opt.ladeWarteMs || 8000;               /* höchstens so lange auf die Firebase-Skripte warten */
     const NAME_MAX = opt.nameMax || 20;
+    const FREIGABE_WARTE = opt.freigabeWarteMs || 4000;       /* höchstens so lange auf die Freigabe warten, dann offen */
 
     let auth = null, db = null;
     let aktiv = false;            /* Firebase ist geladen und eingerichtet */
@@ -136,7 +148,8 @@
     }
 
     /* ---------- Anmelden ---------- */
-    /* Ergebnis: { ok: true, name, brauchtAngaben, ohneNetz, gespeichert } oder { ok: false, grund }.
+    /* Ergebnis: { ok: true, name, brauchtAngaben, ohneNetz, gespeichert } oder { ok: false, grund }
+       oder { ok: false, zu: true, grund: TEXT.zu }, wenn die Lehrkraft die Plattform gesperrt hat.
        brauchtAngaben: Es gibt noch nirgends einen Stand, die Seite fragt etwas ab und ruft dann anlegen(). */
     function anmelden(roh) {
       const code = LK.codePruefen(roh);
@@ -156,6 +169,12 @@
     /* Wenn die Anmeldung scheitert: Liegt es am Netz und kennt das Gerät den Code, geht es auf dem Gerät weiter. */
     function ohneNetz(code, e) {
       if (e && auth && (e.kindText || !istNetzFehler(e))) auth.signOut().catch(() => {});
+      if (e && e.zu) {
+        /* Hatte der Tab das Kind schon geöffnet: nur vergessen, wer angemeldet ist. Der Stand bleibt liegen. */
+        if (S.code() === code) S.abmelden();
+        bereit = false; kind = null; wartend = null; nachholen = null;
+        return { ok: false, zu: true, grund: e.kindText };
+      }
       if (e && e.kindText) return { ok: false, grund: e.kindText };
       if (e && !istNetzFehler(e)) {
         const c = e.code;
@@ -169,13 +188,31 @@
       return { ok: true, name: r.kind.name, brauchtAngaben: false, ohneNetz: true, gespeichert: r.ok };
     }
 
-    /* Nach der Anmeldung bei Firebase: Konto prüfen, Stand holen, auf dem Gerät öffnen. */
-    function nachAnmeldung(code) {
+    /* Ist die Plattform für die Klasse offen? true = offen. Nur ein ausdrückliches false sperrt.
+       Gefragt wird beim Server, nicht im Zwischenspeicher des Geräts: Ein alter Stand soll nicht sperren. */
+    function freigabeLesen() {
+      if (!opt.freigabe) return Promise.resolve(true);
+      let uhr = null;
+      const frage = Promise.resolve()
+        .then(() => db.collection('oeffentlich').doc('plattformen').get({ source: 'server' }))
+        .then(snap => !(snap && snap.exists && (snap.data() || {})[opt.freigabe] === false), () => true);
+      const genug = new Promise(ok => { uhr = setTimeout(() => ok(true), FREIGABE_WARTE); });
+      return Promise.race([frage, genug]).then(offen => { clearTimeout(uhr); return offen; });
+    }
+
+    /* Nach der Anmeldung bei Firebase: Konto prüfen, Freigabe prüfen, Stand holen, auf dem Gerät öffnen.
+       pruefen = false beim stillen Nachholen mit wieder Netz: Die Sperre gilt erst ab dem nächsten Start. */
+    function nachAnmeldung(code, pruefen = true) {
       const id = idVon(code);
+      const freigabe = pruefen ? freigabeLesen() : Promise.resolve(true);   /* läuft neben dem Lesen von kinder */
       return db.collection(KINDER).doc(id).get().then(snap => {
         if (!snap.exists) return auth.signOut().catch(() => {}).then(() => { throw { kindText: TEXT.gesperrt }; });
-        const name = String((snap.data() || {}).vorname || '').trim().slice(0, NAME_MAX) || 'Taucher';
-        return db.collection(opt.sammlung).doc(id).get().then(st => {
+        const konto = snap.data() || {};
+        const name = String(konto.vorname || '').trim().slice(0, NAME_MAX) || 'Taucher';
+        return freigabe.then(offen => {
+          if (!offen && konto.testkind !== true) return auth.signOut().catch(() => {}).then(() => { throw { kindText: TEXT.zu, zu: true }; });
+          return db.collection(opt.sammlung).doc(id).get();
+        }).then(st => {
           const fern = st.exists ? st.data() : null;
           if (opt.brauchtAngaben && !fern && !S.vorhanden(code)) {
             wartend = { code, name };
@@ -253,7 +290,7 @@
       if (!nachholen || !aktiv) return Promise.resolve();
       const code = nachholen;
       if (S.code() !== code) { nachholen = null; return Promise.resolve(); }
-      return beiFirebaseAnmelden(code).then(() => { if (S.code() === code) return nachAnmeldung(code); }).catch(() => { /* beim nächsten Mal wieder */ });
+      return beiFirebaseAnmelden(code).then(() => { if (S.code() === code) return nachAnmeldung(code, false); }).catch(() => { /* beim nächsten Mal wieder */ });
     }
 
     /* Schreibt vorher noch einmal. Der Stand bleibt auf dem Gerät liegen (für Zeiten ohne Netz). */

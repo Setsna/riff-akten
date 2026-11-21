@@ -53,20 +53,24 @@ window.RA = window.RA || {};
     schreibPauseMs: C.speichernNachMs,
     nochmalMs: C.wiederholenNachMs,
     nameMax: 20,
-    texte: TEXTE
+    texte: TEXTE,
+    freigabe: 'riffakten'      // Schlüssel im Lehrerbereich des Perlentauchers (oeffentlich/plattformen), seit 21.11.2026
   });
 
   var offen = false;          // ein Kind ist angemeldet (oder ohne Netz auf dem Gerät geöffnet)
   var letzterFehler = null;
 
   // ---------- Start ----------
-  // fertig(zustand) mit zustand = 'angemeldet' | 'anmelden' | 'offline'
+  // fertig(zustand) mit zustand = 'angemeldet' | 'anmelden' | 'offline' | 'zu'
+  // 'zu': Die Lehrkraft hat die Riff-Akten im Lehrerbereich gesperrt. konto-cloud.js hat das Kind
+  // schon abgemeldet, sein Stand bleibt auf dem Gerät und in der Datenbank.
   function start(fertig) {
     var LA = LK.adresse;
     var qr = LA.code(), spur = LA.spur();
     LA.saeubern();
 
     function ende(r) {
+      if (r && r.zu) { offen = false; fertig('zu'); return; }
       if (!K.aktiv()) { offen = false; fertig('offline'); return; }
       if (r && r.ok) { offen = true; fertig('angemeldet'); return; }
       offen = false;
@@ -101,10 +105,12 @@ window.RA = window.RA || {};
 
   // ---------- Anmelden mit Code (eingetippt) ----------
   // Promise: erfüllt, wenn das Kind drin ist, sonst abgelehnt mit einem kindgerechten Satz.
+  // Ist die Plattform gesperrt, wird mit { zu: true } abgelehnt (app.js zeigt dann „Bald offen“).
   function anmelden(roh) {
     letzterFehler = null;
     return K.anmelden(roh).then(function (r) {
       if (r.ok) { offen = true; return true; }
+      if (r.zu) { offen = false; throw { zu: true }; }
       throw r.grund || TEXTE.sonst;
     }, function () { throw TEXTE.sonst; });
   }
@@ -192,6 +198,7 @@ window.RA = window.RA || {};
     fehler: function () { return letzterFehler; },
     fehlerLoeschen: function () { letzterFehler = null; },
     TEXTE: TEXTE,
+    zuText: K.TEXT.zu,
     // für die Tests
     _konto: K
   };

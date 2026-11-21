@@ -130,11 +130,14 @@
 
   // ---------- App laden ----------
   // opt.seite: 'index' (Kinder-App, Vorgabe) oder 'lehrer'
+  // opt.behalten: Speicher und Datenbank bleiben (dasselbe Gerät, Seite neu geladen)
   function appLaden(opt) {
     opt = opt || {};
-    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
-    window.SZENARIO = { daten: opt.daten || {}, konten: opt.konten || {},
-                        lehrer: opt.lehrer, googleKonto: opt.googleKonto };
+    if (!opt.behalten || !window.SZENARIO) {
+      try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+      window.SZENARIO = { daten: opt.daten || {}, konten: opt.konten || {},
+                          lehrer: opt.lehrer, googleKonto: opt.googleKonto, freigabeFehler: opt.freigabeFehler };
+    }
 
     var lehrer = opt.seite === 'lehrer';
     var html = lehrer ? lehrerText : quelltext;
@@ -213,6 +216,9 @@
     q('#code').value = code;
     q('#anmeldung button[type="submit"]').click();
   }
+  var FREIGABE = 'oeffentlich/plattformen';
+  var ZU_TEXT = 'Bald offen! Deine Lehrkraft sagt dir, wann es hier losgeht.';
+  function zuSichtbar() { return q('#h-zu') && q('#zu-ab') && !q('#anmeldung') && !q('#nicht-ich'); }
   function fehlertext() {
     return warteAuf('Fehlermeldung', function () {
       var el = q('#code-fehler');
@@ -722,6 +728,82 @@
           pruefe(w.RA.cloud.kind().angelegt === f.angelegt, '„Im Dienst seit“ nicht aus ra_stand');
           return warteAuf('Meldung', function () { return /neu gestartet/.test(q('#live').textContent); });
         });
+    }); })
+
+    // ---------- Freigabe durch die Lehrkraft (oeffentlich/plattformen, Spec Plattform-Freigabe Etappe 3, 21.11.2026) ----------
+    .then(function () { return test('Plattform gesperrt: Nach der Code-Eingabe kommt „Bald offen“ statt der Akten, Abmelden führt zur Anmeldung, kein Stand angelegt', function () {
+      var d = grunddaten(); d[FREIGABE] = { riffakten: false, kieselwaage: true };
+      return appLaden({ daten: d })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen(CODE); return warteAuf('Bald offen', zuSichtbar); })
+        .then(function () {
+          var t = text('#h-zu') + ' ' + text('.zu .hinweis');
+          pruefe(t.indexOf(ZU_TEXT) === 0, 'Text: ' + t);
+          pruefe(qa('h1').length === 1 && q('#h-zu').tagName === 'H1', 'Überschriften');
+          pruefe(/^Bald offen/.test(doc().title), 'Titel: ' + doc().title);
+          pruefe(!win().ATTRAPPE.daten['ra_stand/' + CODE.toLowerCase()] && !win().firebase.auth().currentUser && !win().RA.cloud.angemeldet(), 'Stand angelegt oder noch angemeldet');
+          pruefe(!gelesen('ra_faelle'), 'Akten gelesen');
+          pruefe(!/Gesperrt/i.test(q('main').textContent), 'Wort „Gesperrt“ für Kinder');
+          barrierefrei('Bald offen');
+          q('#zu-ab').click();
+          return aufAnmeldung();
+        });
+    }); })
+
+    .then(function () { return test('Plattform gesperrt, Kind war schon angemeldet (Detektivbuch offen): Neuladen zeigt „Bald offen“, Stand bleibt; nach der Freigabe ist alles da', function () {
+      var vorher;
+      return appLaden({ daten: grunddaten(), hash: '#c=' + CODE })
+        .then(aufStart)
+        .then(function () { win().RA.store.zeitDazu('probe', 42); return win().RA.cloud.schreiben(); })
+        .then(function () {
+          vorher = JSON.stringify(window.SZENARIO.daten['ra_stand/' + CODE.toLowerCase()]);
+          window.SZENARIO.daten[FREIGABE] = { riffakten: false };
+          return appLaden({ behalten: true, hash: '#buch' });
+        })
+        .then(function () { return warteAuf('Bald offen', zuSichtbar, 8000); })
+        .then(function () {
+          pruefe(JSON.stringify(window.SZENARIO.daten['ra_stand/' + CODE.toLowerCase()]) === vorher, 'Stand verändert');
+          pruefe(!win().RA.cloud.angemeldet() && !win().firebase.auth().currentUser, 'noch angemeldet');
+          pruefe(!/buch/.test(win().location.hash), 'Detektivbuch noch in der Adresse');
+          window.SZENARIO.daten[FREIGABE] = { riffakten: true };
+          return appLaden({ behalten: true });
+        })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen(CODE); return aufStart(); })
+        .then(function () { pruefe(win().RA.store.S.aktiv().zeit.probe === 42, 'Lernzeit nach der Freigabe weg'); });
+    }); })
+
+    .then(function () { return test('Plattform gesperrt, QR-Aufkleber (#c=CODE): „Bald offen“', function () {
+      var d = grunddaten(); d[FREIGABE] = { riffakten: false };
+      return appLaden({ daten: d, hash: '#c=' + CODE }).then(function () { return warteAuf('Bald offen', zuSichtbar, 8000); });
+    }); })
+
+    .then(function () { return test('Testkind (testkind: true in kinder) sieht die Akten trotz Sperre', function () {
+      var d = grunddaten(); d[FREIGABE] = { riffakten: false }; d['kinder/' + CODE.toLowerCase()].testkind = true;
+      return appLaden({ daten: d })
+        .then(aufAnmeldung)
+        .then(function () { codeEintippen(CODE); return aufStart(); })
+        .then(function () { pruefe(!q('#h-zu'), 'Bald offen sichtbar'); });
+    }); })
+
+    .then(function () { return test('Offen bleibt es bei true, fehlendem Eintrag, fehlendem Dokument und wenn das Dokument nicht gelesen werden kann', function () {
+      var faelle = [
+        ['true', { riffakten: true }, null],
+        ['Eintrag fehlt', { zeitenstrom: false }, null],
+        ['Dokument fehlt', undefined, null],
+        ['nicht lesbar', { riffakten: false }, 'unavailable']];
+      return faelle.reduce(function (kette, f) {
+        return kette.then(function () {
+          var d = grunddaten(); if (f[1]) d[FREIGABE] = f[1];
+          return appLaden({ daten: d, freigabeFehler: f[2] })
+            .then(aufAnmeldung)
+            .then(function () { codeEintippen(CODE); return aufStart(); })
+            .then(function () {
+              pruefe(!q('#h-zu'), f[0] + ': Bald offen sichtbar');
+              pruefe(f[0] === 'nicht lesbar' || gelesen(FREIGABE), f[0] + ': Freigabe nicht gefragt');
+            });
+        });
+      }, Promise.resolve());
     }); })
 
     .then(function () { return test('Regeln (Attrappe): fremdes Feld, fremdes Kind und Akte schreiben werden abgelehnt', function () {

@@ -112,6 +112,7 @@ window.RA = window.RA || {};
       RA.cloud.anmelden(feld.value).then(function () {
         weg();
       }, function (text) {
+        if (text && text.zu) { baldOffen(); return; }
         knopf.disabled = false;
         knopfText.textContent = 'Los geht’s';
         fehlerEl.textContent = text;
@@ -119,6 +120,38 @@ window.RA = window.RA || {};
         feld.setAttribute('aria-describedby', 'code-hilfe code-fehler');
         feld.focus();
       });
+    });
+  }
+
+  // ---------- Ansicht: Plattform gesperrt ----------
+  // Die Lehrkraft hat die Riff-Akten im Lehrerbereich des Perlentauchers gesperrt
+  // (oeffentlich/plattformen, js/konto-cloud.js). Das Kind ist schon wieder abgemeldet,
+  // sein Stand bleibt auf dem Gerät und in der Datenbank. Text von Ingo gewählt
+  // am 21.11.2026 (RA.cloud.zuText): „Bald offen!“ als Überschrift, der Rest darunter.
+  // Gebaut wie in der Kieselwaage (v=7), hier im Stil der Ansicht „Kein Netz“.
+  function baldOffen() {
+    if (RA.uhr) RA.uhr.stopp();
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    var t = RA.cloud.zuText, i = t.indexOf('! ');
+    var titel = i > 0 ? t.slice(0, i + 1) : 'Bald offen';
+    var rest = i > 0 ? t.slice(i + 2) : t;
+    zeigen(kopf() +
+      '<main class="inhalt zu">' +
+        '<h1 class="frage" id="h-zu">' +
+          '<svg class="zu__schloss" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<rect x="5" y="10.5" width="14" height="10" rx="2.5"></rect>' +
+          '<path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"></path></svg>' + esc(titel) + '</h1>' +
+        '<p class="hinweis">' + esc(rest) + '</p>' +
+        '<div class="fenster fenster--eingang">' + klaro('klaro--fenster') +
+          '<button type="button" class="knopf" id="zu-ab"><span class="knopf__text">Abmelden</span></button>' +
+        '</div>' +
+      '</main>'
+    );
+    document.title = 'Bald offen – Riff-Akten';
+    document.getElementById('zu-ab').addEventListener('click', function () {
+      this.disabled = true;
+      document.title = 'Riff-Akten';
+      RA.cloud.abmelden().then(function () { anmelden(); }, function () { anmelden(); });
     });
   }
 
@@ -312,6 +345,7 @@ window.RA = window.RA || {};
   laden();
   RA.cloud.start(function (zustand) {
     if (zustand === 'angemeldet') weg();
+    else if (zustand === 'zu') baldOffen();
     else if (zustand === 'offline') offline();
     else anmelden(RA.cloud.fehler());
   });

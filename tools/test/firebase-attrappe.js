@@ -123,6 +123,11 @@
       if (!freigeschaltet(mailCode())) nein();
       return;
     }
+    // oeffentlich/plattformen (Plattform-Freigabe, 21.11.2026): jeder darf genau dieses Dokument lesen, niemand schreiben
+    if (sammlung === 'oeffentlich') {
+      if (op === 'get' && id === 'plattformen') return;
+      nein();
+    }
     if (sammlung === 'kinder') {
       if (!A.lehrer) return;
       if (istLehrer()) return;
@@ -172,7 +177,8 @@
     return {
       id: id, pfad: pfad,
       sammlung: sammlung,
-      get: function () { return bald(function () { lehrerPruefen(sammlung, false, id); A.gelesen.push(pfad); return schnappschuss(pfad); }); },
+      // ATTRAPPE.freigabeFehler (z. B. 'unavailable'): nur das Lesen von oeffentlich/plattformen scheitert so
+      get: function () { return bald(function () { if (pfad === 'oeffentlich/plattformen' && A.freigabeFehler) throw fehler(A.freigabeFehler); lehrerPruefen(sammlung, false, id); A.gelesen.push(pfad); return schnappschuss(pfad); }); },
       set: function (d, opt) { formatPruefen(d, false); return bald(function () { lehrerPruefen(sammlung, true, id, nachher(pfad, d, opt)); schreiben(pfad, d, opt); }); },
       delete: function () {
         return bald(function () {
