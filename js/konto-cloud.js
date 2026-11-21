@@ -86,6 +86,16 @@
     /* „Abmelden“ kam, bevor Firebase geladen war: der Code, dessen gemerkte Anmeldung bei Firebase noch zu beenden ist.
        Steht nur im Arbeitsspeicher der Seite, nie im Speicher des Geräts. */
     let abmeldenNachholen = null;
+    /* Vermerk auf dem Gerät (seit 21.11.2026): „Abmelden“ kam in einem Seitenaufruf, in dem Firebase gar nicht geladen
+       wurde. Die Anmeldung, die Firebase im Browser gemerkt hat, konnte dann niemand beenden. Der nächste Start mit
+       Firebase holt das nach, auf jeder Plattform (alle liegen unter derselben Adresse und teilen sich Anmeldung und
+       Vermerk). Der Vermerk enthält keinen Code und keinen Namen, nur „1“. */
+    const VERMERK = 'lagunenkonto-abmelden-1';
+    const vermerk = {
+      steht() { try { return localStorage.getItem(VERMERK) === '1'; } catch (e) { return false; } },
+      setzen() { try { localStorage.setItem(VERMERK, '1'); } catch (e) { /* dann bleibt es beim Stand vor dem 21.11.2026 */ } },
+      loeschen() { try { localStorage.removeItem(VERMERK); } catch (e) { /* beim nächsten Start noch einmal */ } }
+    };
 
     const LOKAL = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
     const vorhanden = () => typeof firebase !== 'undefined' && !!opt.firebase.apiKey && (!LOKAL || !!window.ATTRAPPE);
@@ -152,9 +162,15 @@
           erledigt = true;
           const code = user && user.email ? LK.codePruefen(user.email.split('@')[0]) : null;
           if (stand !== abmeldungen) {
-            if (code && code === abmeldenNachholen) auth.signOut().catch(() => {});
+            if (code && code === abmeldenNachholen) auth.signOut().then(() => vermerk.loeschen(), () => {});
             abmeldenNachholen = null;
             fertig({ ok: false });
+            return;
+          }
+          /* Vermerk aus einem früheren Seitenaufruf ohne Firebase: Wer bei Firebase noch angemeldet ist, wird jetzt
+             abgemeldet. Erst danach geht es weiter, damit eine neue Code-Eingabe nicht in die Abmeldung gerät. */
+          if (vermerk.steht()) {
+            (user ? auth.signOut() : Promise.resolve()).then(() => vermerk.loeschen(), () => {}).then(() => fertig({ ok: false }));
             return;
           }
           if (!code) { fertig({ ok: false }); return; }
@@ -186,7 +202,7 @@
         /* Beim allerersten Anmelden gibt es das Konto noch nicht. */
         if (e && (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential')) return auth.createUserWithEmailAndPassword(mail, code);
         throw e;
-      });
+      }).then(x => { vermerk.loeschen(); return x; });   /* geglückt: Die alte Anmeldung ist ersetzt, der Vermerk erledigt */
     }
 
     /* Wenn die Anmeldung scheitert: Liegt es am Netz und kennt das Gerät den Code, geht es auf dem Gerät weiter. */
@@ -333,8 +349,9 @@
         bereit = false; kind = null; wartend = null; nachholen = null;
         S.abmelden();
         melden('ok');
-        /* Firebase ist noch nicht geladen: Die Anmeldung, die dort liegt, wird beendet, sobald es da ist */
-        if (!auth) { abmeldenNachholen = code; return undefined; }
+        /* Firebase ist noch nicht geladen: Die Anmeldung, die dort liegt, wird beendet, sobald es da ist.
+           Kommt es in diesem Seitenaufruf gar nicht mehr, erledigt das der nächste Start über den Vermerk. */
+        if (!auth) { abmeldenNachholen = code; if (!S.istVorschau) vermerk.setzen(); return undefined; }
         return auth.signOut().catch(() => {});
       };
       return (bereit ? schreiben().catch(() => {}) : Promise.resolve()).then(fertig);
