@@ -18,8 +18,23 @@
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <link rel="preload" href="schriften/libre-caslon-text.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="schriften/andika-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="schriften/andika-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <title>Riff-Akten</title>
 <link rel="stylesheet" href="css/riff-akten.css?v=34">
+<!-- Vorlade-Liste (21.11.2026): Die CSP-Zeile oben schaltet das Vorausladen des Browsers ab.
+     Ohne diese Liste kämen die Skripte einzeln nacheinander, jedes etwa 0,3 s.
+     Für jedes eigene Skript dieser Seite steht hier eine Zeile mit genau derselben Adresse, auch dieselbe Nummer ?v=N.
+     Kommt ein Skript dazu oder fällt eines weg: hier mit ändern. Firebase steht absichtlich nicht hier. -->
+<link rel="preload" as="script" href="js/config.js?v=34">
+<link rel="preload" as="script" href="js/konto-abgleich.js?v=34">
+<link rel="preload" as="script" href="js/konto-speicher.js?v=34">
+<link rel="preload" as="script" href="js/konto-cloud.js?v=34">
+<link rel="preload" as="script" href="js/merge.js?v=34">
+<link rel="preload" as="script" href="js/store.js?v=34">
+<link rel="preload" as="script" href="js/cloud.js?v=34">
+<link rel="preload" as="script" href="js/app.js?v=34">
+<link rel="preload" as="script" href="js/buch.js?v=34">
+<link rel="preload" as="script" href="js/akten.js?v=34">
 </head>
 <body>
 <!-- Gemalter Riffgrund, Lichtschacht und Randblasen: nur Schmuck -->
